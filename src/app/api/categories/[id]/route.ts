@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import Product from "@/models/Product";
+import Category from "@/models/Category";
 import { getCurrentAdmin } from "@/lib/auth";
 
 interface RouteParams {
@@ -20,21 +20,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     await dbConnect();
 
     const { id } = await params;
-    const product = await Product.findById(id);
+    const category = await Category.findById(id);
 
-    if (!product) {
+    if (!category) {
       return NextResponse.json(
-        { success: false, message: "Product not found" },
+        { success: false, message: "Category not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: product,
+      data: category,
     });
   } catch (error) {
-    console.error("Get product error:", error);
+    console.error("Get category error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -57,25 +57,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const updateData = await request.json();
 
-    const product = await Product.findByIdAndUpdate(
+    const category = await Category.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
 
-    if (!product) {
+    if (!category) {
       return NextResponse.json(
-        { success: false, message: "Product not found" },
+        { success: false, message: "Category not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: product,
+      data: category,
     });
   } catch (error) {
-    console.error("Update product error:", error);
+    console.error("Update category error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -96,21 +96,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     await dbConnect();
 
     const { id } = await params;
-    const product = await Product.findByIdAndDelete(id);
+    const category = await Category.findByIdAndDelete(id);
 
-    if (!product) {
+    if (!category) {
       return NextResponse.json(
-        { success: false, message: "Product not found" },
+        { success: false, message: "Category not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Product deleted successfully",
+      message: "Category deleted successfully",
     });
   } catch (error) {
-    console.error("Delete product error:", error);
+    console.error("Delete category error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import Product from "@/models/Product";
+import InventoryMovement from "@/models/InventoryMovement";
 import { getCurrentAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -17,37 +17,25 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const category = searchParams.get("category");
-    const search = searchParams.get("search");
-    const sortBy = searchParams.get("sortBy") || "createdAt";
-    const sortOrder = searchParams.get("sortOrder") || "desc";
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const productId = searchParams.get("productId");
 
-    // Build query
     const query: any = {};
-
-    if (category) {
-      query.category = category;
+    if (productId) {
+      query.productId = productId;
     }
 
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    // Execute query with pagination
-    const total = await Product.countDocuments(query);
-    const products = await Product.find(query)
-      .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1 })
+    const total = await InventoryMovement.countDocuments(query);
+    const movements = await InventoryMovement.find(query)
+      .populate("productId")
+      .populate("createdBy", "username")
+      .sort({ createdAt: -1 })
       .limit(limit)
       .skip((page - 1) * limit);
 
     return NextResponse.json({
       success: true,
-      data: products,
+      data: movements,
       pagination: {
         page,
         limit,
@@ -56,7 +44,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Get products error:", error);
+    console.error("Get inventory movements error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -76,22 +64,35 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const productData = await request.json();
+    const movementData = await request.json();
+    const movement = new InventoryMovement({
+      ...movementData,
+      createdBy: admin.id,
+    });
 
-    // Generate SKU if not provided
-    if (!productData.sku) {
-      productData.sku = `PRD${Date.now()}`;
+    await movement.save();
+
+    // Update product stock
+    const Product = (await import("@/models/Product")).default;
+    const product = await Product.findById(movementData.productId);
+
+    if (product) {
+      if (movementData.type === "in") {
+        product.stock += movementData.quantity;
+      } else if (movementData.type === "out") {
+        product.stock -= movementData.quantity;
+      } else {
+        product.stock = movementData.quantity;
+      }
+      await product.save();
     }
-
-    const product = new Product(productData);
-    await product.save();
 
     return NextResponse.json({
       success: true,
-      data: product,
+      data: movement,
     });
   } catch (error: any) {
-    console.error("Create product error:", error);
+    console.error("Create inventory movement error:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Internal server error" },
       { status: 500 }
