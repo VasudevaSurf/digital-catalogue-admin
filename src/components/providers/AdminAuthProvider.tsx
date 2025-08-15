@@ -19,13 +19,10 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   );
 
   useEffect(() => {
-    // Try to load admin user from token
-    const token = localStorage.getItem("adminToken");
-    if (token) {
-      dispatch(loadAdminUser());
-    }
+    // Try to load admin user from server (using cookie)
+    dispatch(loadAdminUser());
   }, [dispatch]);
-
+  
   // Redirect to login if not authenticated (except on login page)
   useEffect(() => {
     if (!isLoading && !isAuthenticated && pathname !== "/login") {

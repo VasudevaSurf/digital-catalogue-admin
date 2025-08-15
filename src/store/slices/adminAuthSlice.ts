@@ -10,7 +10,6 @@ const initialState: AdminAuthState = {
   error: null,
 };
 
-// Async thunks
 export const adminLogin = createAsyncThunk(
   "adminAuth/login",
   async (
@@ -18,16 +17,17 @@ export const adminLogin = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await api.post<{ user: AdminUser; token: string }>(
-        "/api/auth/admin/login",
-        {
-          username,
-          password,
-        }
-      );
+      const response = await api.post<{
+        success: boolean;
+        user: AdminUser;
+        token?: string;
+      }>("/api/auth/login", {
+        username,
+        password,
+      });
 
-      // Store token in localStorage
-      localStorage.setItem("adminToken", response.data.token);
+      // The token is set as httpOnly cookie by the server
+      // So we don't need to store it in localStorage
 
       return response.data;
     } catch (error: any) {

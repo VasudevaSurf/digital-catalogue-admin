@@ -27,8 +27,8 @@ export function AdminHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    dispatch(adminLogout());
+  const handleLogout = async () => {
+    await dispatch(adminLogout());
     router.push("/login");
   };
 
