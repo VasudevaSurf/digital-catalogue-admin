@@ -1,9 +1,9 @@
 // src/lib/api.ts
 import axios, { AxiosResponse, AxiosError, AxiosRequestConfig } from "axios";
 
-// Create axios instance
+// Create axios instance - remove the base URL since we're using Next.js API routes
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api",
+  // Remove baseURL to use relative paths for Next.js API routes
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -60,8 +60,11 @@ api.interceptors.response.use(
 
       localStorage.removeItem(tokenKey);
 
-      // Only redirect if we're in the browser
-      if (typeof window !== "undefined") {
+      // Only redirect if we're in the browser and not already on login page
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.includes("/login")
+      ) {
         window.location.href = loginPath;
       }
     }
@@ -323,7 +326,7 @@ export const apiUtils = {
   // Health check
   healthCheck: async (): Promise<boolean> => {
     try {
-      await api.get("/health");
+      await api.get("/api/health");
       return true;
     } catch (error) {
       return false;
@@ -338,96 +341,102 @@ export const authAPI = {
     phoneNumber?: string;
     password?: string;
     otp?: string;
-  }) => apiUtils.post("/auth/login", credentials),
+  }) => apiUtils.post("/api/auth/login", credentials),
 
   adminLogin: (credentials: { username: string; password: string }) =>
-    apiUtils.post("/auth/admin/login", credentials),
+    apiUtils.post("/api/auth/login", credentials), // Fixed path
 
-  logout: () => apiUtils.post("/auth/logout"),
+  logout: () => apiUtils.post("/api/auth/logout"),
 
-  refreshToken: () => apiUtils.post("/auth/refresh"),
+  refreshToken: () => apiUtils.post("/api/auth/refresh"),
 
   sendOTP: (phoneNumber: string) =>
-    apiUtils.post("/auth/send-otp", { phoneNumber }),
+    apiUtils.post("/api/auth/send-otp", { phoneNumber }),
 
   verifyOTP: (phoneNumber: string, otp: string) =>
-    apiUtils.post("/auth/verify-otp", { phoneNumber, otp }),
+    apiUtils.post("/api/auth/verify-otp", { phoneNumber, otp }),
+
+  verify: () => apiUtils.get("/api/auth/verify"),
 };
 
 export const productAPI = {
-  getAll: (params?: any) => apiUtils.get("/products", params),
+  getAll: (params?: any) => apiUtils.get("/api/products", params),
 
-  getById: (id: string) => apiUtils.get(`/products/${id}`),
+  getById: (id: string) => apiUtils.get(`/api/products/${id}`),
 
-  create: (product: any) => apiUtils.post("/products", product),
+  create: (product: any) => apiUtils.post("/api/products", product),
 
   update: (id: string, product: any) =>
-    apiUtils.put(`/products/${id}`, product),
+    apiUtils.put(`/api/products/${id}`, product),
 
-  delete: (id: string) => apiUtils.delete(`/products/${id}`),
+  delete: (id: string) => apiUtils.delete(`/api/products/${id}`),
 
-  search: (query: string) => apiUtils.get("/products/search", { q: query }),
+  search: (query: string) => apiUtils.get("/api/products/search", { q: query }),
 
-  getCategories: () => apiUtils.get("/products/categories"),
+  getCategories: () => apiUtils.get("/api/products/categories"),
 };
 
 export const orderAPI = {
-  getAll: (params?: any) => apiUtils.get("/orders", params),
+  getAll: (params?: any) => apiUtils.get("/api/orders", params),
 
-  getById: (id: string) => apiUtils.get(`/orders/${id}`),
+  getById: (id: string) => apiUtils.get(`/api/orders/${id}`),
 
-  create: (order: any) => apiUtils.post("/orders", order),
+  create: (order: any) => apiUtils.post("/api/orders", order),
 
   updateStatus: (id: string, status: string) =>
-    apiUtils.patch(`/orders/${id}/status`, { status }),
+    apiUtils.patch(`/api/orders/${id}/status`, { status }),
 
   cancel: (id: string, reason?: string) =>
-    apiUtils.patch(`/orders/${id}/cancel`, { reason }),
+    apiUtils.patch(`/api/orders/${id}/cancel`, { reason }),
 };
 
 export const adminAPI = {
   // Dashboard
-  getDashboardStats: () => apiUtils.get("/admin/analytics/dashboard"),
+  getDashboardStats: () => apiUtils.get("/api/admin/analytics/dashboard"),
 
   getSalesData: (params: { start: string; end: string }) =>
-    apiUtils.get("/admin/analytics/sales", params),
+    apiUtils.get("/api/admin/analytics/sales", params),
 
   // Products
-  getProducts: (params?: any) => apiUtils.get("/admin/products", params),
+  getProducts: (params?: any) => apiUtils.get("/api/admin/products", params),
 
-  createProduct: (product: any) => apiUtils.post("/admin/products", product),
+  createProduct: (product: any) =>
+    apiUtils.post("/api/admin/products", product),
 
   updateProduct: (id: string, product: any) =>
-    apiUtils.put(`/admin/products/${id}`, product),
+    apiUtils.put(`/api/admin/products/${id}`, product),
 
-  deleteProduct: (id: string) => apiUtils.delete(`/admin/products/${id}`),
+  deleteProduct: (id: string) => apiUtils.delete(`/api/admin/products/${id}`),
 
   // Orders
-  getOrders: (params?: any) => apiUtils.get("/admin/orders", params),
+  getOrders: (params?: any) => apiUtils.get("/api/admin/orders", params),
 
-  getOrderById: (id: string) => apiUtils.get(`/admin/orders/${id}`),
+  getOrderById: (id: string) => apiUtils.get(`/api/admin/orders/${id}`),
 
   updateOrderStatus: (id: string, status: string) =>
-    apiUtils.patch(`/admin/orders/${id}/status`, { status }),
+    apiUtils.patch(`/api/admin/orders/${id}/status`, { status }),
+
+  getRecentOrders: (params?: any) =>
+    apiUtils.get("/api/admin/orders/recent", params),
 
   // Customers
-  getCustomers: (params?: any) => apiUtils.get("/admin/customers", params),
+  getCustomers: (params?: any) => apiUtils.get("/api/admin/customers", params),
 
-  getCustomerById: (id: string) => apiUtils.get(`/admin/customers/${id}`),
+  getCustomerById: (id: string) => apiUtils.get(`/api/admin/customers/${id}`),
 
   // Inventory
-  getStockAlerts: () => apiUtils.get("/admin/inventory/alerts"),
+  getStockAlerts: () => apiUtils.get("/api/admin/inventory/alerts"),
 
   getStockMovements: (params?: any) =>
-    apiUtils.get("/admin/inventory/movements", params),
+    apiUtils.get("/api/admin/inventory/movements", params),
 
   // Messages
-  sendMessage: (data: any) => apiUtils.post("/admin/messages/send", data),
+  sendMessage: (data: any) => apiUtils.post("/api/admin/messages/send", data),
 
-  getMessageTemplates: () => apiUtils.get("/admin/messages/templates"),
+  getMessageTemplates: () => apiUtils.get("/api/admin/messages/templates"),
 
   createMessageTemplate: (template: any) =>
-    apiUtils.post("/admin/messages/templates", template),
+    apiUtils.post("/api/admin/messages/templates", template),
 };
 
 // Error handling utilities

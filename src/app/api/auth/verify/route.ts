@@ -1,39 +1,36 @@
+// src/app/api/auth/verify/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentAdmin } from "@/lib/auth";
-import dbConnect from "@/lib/mongodb";
-import Admin from "@/models/Admin";
+import { cookies } from "next/headers";
+
+// Demo admin user - same as in login
+const DEMO_ADMIN = {
+  id: "1",
+  username: "admin",
+  email: "admin@digitalcatalogue.com",
+  role: "admin" as const,
+  permissions: ["all"],
+  lastLogin: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+};
 
 export async function GET(request: NextRequest) {
   try {
-    const adminData = await getCurrentAdmin();
+    const cookieStore = await cookies();
+    const token = cookieStore.get("admin-token");
 
-    if (!adminData) {
+    if (!token) {
       return NextResponse.json(
         { success: false, message: "Not authenticated" },
         { status: 401 }
       );
     }
 
-    await dbConnect();
-
-    const admin = await Admin.findById(adminData.id).select("-password");
-
-    if (!admin || !admin.isActive) {
-      return NextResponse.json(
-        { success: false, message: "Admin not found or inactive" },
-        { status: 401 }
-      );
-    }
+    // For demo, we just check if token exists
+    // In production, verify JWT token properly
 
     return NextResponse.json({
       success: true,
-      user: {
-        id: admin._id,
-        username: admin.username,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-      },
+      user: DEMO_ADMIN,
     });
   } catch (error) {
     console.error("Verify error:", error);

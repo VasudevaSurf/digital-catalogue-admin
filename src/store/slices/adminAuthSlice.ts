@@ -42,17 +42,28 @@ export const loadAdminUser = createAsyncThunk(
   "adminAuth/loadUser",
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem("adminToken");
-      if (!token) {
-        throw new Error("No token found");
-      }
-
-      const response = await api.get<AdminUser>("/api/auth/admin/me");
-      return response.data;
+      // For Next.js with httpOnly cookies, we verify through the server
+      const response = await api.get<{ success: boolean; user: AdminUser }>(
+        "/api/auth/verify"
+      );
+      return response.data.user;
     } catch (error: any) {
-      localStorage.removeItem("adminToken");
       return rejectWithValue(
         error.response?.data?.message || "Failed to load user"
+      );
+    }
+  }
+);
+
+export const adminLogout = createAsyncThunk(
+  "adminAuth/logout",
+  async (_, { rejectWithValue }) => {
+    try {
+      await api.post("/api/auth/logout");
+      return true;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to logout"
       );
     }
   }
@@ -102,12 +113,6 @@ const adminAuthSlice = createSlice({
   name: "adminAuth",
   initialState,
   reducers: {
-    adminLogout: (state) => {
-      state.isAuthenticated = false;
-      state.user = null;
-      state.error = null;
-      localStorage.removeItem("adminToken");
-    },
     clearError: (state) => {
       state.error = null;
     },
@@ -131,6 +136,7 @@ const adminAuthSlice = createSlice({
       .addCase(adminLogin.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        state.isAuthenticated = false;
       })
 
       // Load Admin User
@@ -142,10 +148,17 @@ const adminAuthSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload;
       })
-      .addCase(loadAdminUser.rejected, (state, action) => {
+      .addCase(loadAdminUser.rejected, (state) => {
         state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
+      })
+
+      // Admin Logout
+      .addCase(adminLogout.fulfilled, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.error = null;
       })
 
       // Update Admin Profile
@@ -177,5 +190,5 @@ const adminAuthSlice = createSlice({
   },
 });
 
-export const { adminLogout, clearError, setAdminUser } = adminAuthSlice.actions;
+export const { clearError, setAdminUser } = adminAuthSlice.actions;
 export default adminAuthSlice.reducer;

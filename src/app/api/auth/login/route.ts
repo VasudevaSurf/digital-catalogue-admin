@@ -1,13 +1,24 @@
+// src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import dbConnect from "@/lib/mongodb";
-import Admin from "@/models/Admin";
-import { generateToken } from "@/lib/auth";
 import { cookies } from "next/headers";
+
+// For demo purposes - in production, use database
+const DEMO_ADMIN = {
+  username: "admin",
+  password: "admin123",
+  user: {
+    id: "1",
+    username: "admin",
+    email: "admin@digitalcatalogue.com",
+    role: "admin" as const,
+    permissions: ["all"],
+    lastLogin: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  },
+};
 
 export async function POST(request: NextRequest) {
   try {
-    await dbConnect();
-
     const { username, password } = await request.json();
 
     if (!username || !password) {
@@ -17,56 +28,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find admin by username or email
-    const admin = await Admin.findOne({
-      $or: [{ username }, { email: username }],
-      isActive: true,
-    });
+    // Demo authentication - replace with actual database check
+    if (username === DEMO_ADMIN.username && password === DEMO_ADMIN.password) {
+      // Generate a simple token for demo (in production, use JWT)
+      const token = Buffer.from(`${username}:${Date.now()}`).toString("base64");
 
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: "Invalid credentials" },
-        { status: 401 }
-      );
+      // Set cookie
+      const cookieStore = await cookies();
+      cookieStore.set("admin-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/",
+      });
+
+      return NextResponse.json({
+        success: true,
+        user: DEMO_ADMIN.user,
+      });
     }
 
-    // Check password
-    const isPasswordValid = await admin.comparePassword(password);
-
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { success: false, message: "Invalid credentials" },
-        { status: 401 }
-      );
-    }
-
-    // Update last login
-    admin.lastLogin = new Date();
-    await admin.save();
-
-    // Generate token
-    const token = generateToken(admin);
-
-    // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set("admin-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
-    });
-
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: admin._id,
-        username: admin.username,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-      },
-    });
+    // Invalid credentials
+    return NextResponse.json(
+      { success: false, message: "Invalid credentials" },
+      { status: 401 }
+    );
   } catch (error: any) {
     console.error("Login error:", error);
     return NextResponse.json(
