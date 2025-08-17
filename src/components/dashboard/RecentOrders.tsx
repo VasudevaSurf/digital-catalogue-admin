@@ -37,7 +37,7 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
           <p className="text-sm text-gray-600">Latest customer orders</p>
         </div>
         <Link
-          href="/dashboard/orders"
+          href="/orders"
           className="flex items-center text-sm text-primary-600 hover:text-primary-700 font-medium"
         >
           View all
@@ -92,7 +92,7 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
               </div>
 
               <Link
-                href={`/dashboard/orders/${order.id}`}
+                href={`/orders/${order.id}`}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <Eye className="w-4 h-4" />

@@ -22,7 +22,7 @@ export function LowStockAlerts({ alerts }: LowStockAlertsProps) {
           <p className="text-sm text-gray-600">Products running low on stock</p>
         </div>
         <Link
-          href="/dashboard/inventory/alerts"
+          href="/inventory/alerts"
           className="flex items-center text-sm text-primary-600 hover:text-primary-700 font-medium"
         >
           View all
@@ -64,7 +64,7 @@ export function LowStockAlerts({ alerts }: LowStockAlertsProps) {
                   {alert.currentStock === 0 ? "Out of Stock" : "Low Stock"}
                 </span>
                 <Link
-                  href={`/dashboard/products/${alert.product.id}`}
+                  href={`/products/${alert.product.id}`}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   Update
@@ -76,7 +76,7 @@ export function LowStockAlerts({ alerts }: LowStockAlertsProps) {
           {activeAlerts.length > 5 && (
             <div className="text-center pt-2">
               <Link
-                href="/dashboard/inventory/alerts"
+                href="/inventory/alerts"
                 className="text-sm text-gray-500 hover:text-gray-700"
               >
                 and {activeAlerts.length - 5} more alerts...

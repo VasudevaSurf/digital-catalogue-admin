@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // Add this import
+import Link from "next/link";
 import { Bell, User, LogOut, Settings, Search } from "lucide-react";
 
 export function AdminHeader() {
@@ -88,7 +88,7 @@ export function AdminHeader() {
             {isUserMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-50">
                 <Link
-                  href="/dashboard/profile"
+                  href="/profile"
                   onClick={() => setIsUserMenuOpen(false)}
                   className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >

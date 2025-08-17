@@ -50,7 +50,7 @@ export default function ProductsPage() {
   }, [pagination.page, searchQuery]);
 
   const handleEdit = (product: any) => {
-    window.location.href = `/products/edit/${product._id}`;
+    window.location.href = `/products/edit/${product._id || product.id}`;
   };
 
   const handleDelete = async (productId: string) => {
