@@ -1,27 +1,40 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { Provider } from "react-redux";
+import { store } from "@/store";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AdminHeader } from "@/components/layout/AdminHeader";
-import { useAppSelector } from "@/store";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { NotificationContainer } from "@/components/ui/NotificationContainer";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useRouter } from "next/navigation";
+import { Toaster } from "react-hot-toast";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { isAuthenticated, isLoading } = useAppSelector(
-    (state) => state.adminAuth
-  );
+function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, isLoading, router]);
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/verify");
+        const data = await response.json();
+
+        if (data.success && data.user) {
+          setIsAuthenticated(true);
+        } else {
+          router.push("/login");
+        }
+      } catch (error) {
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -46,5 +59,19 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Provider store={store}>
+      <DashboardContent>{children}</DashboardContent>
+      <NotificationContainer />
+      <Toaster position="top-right" />
+    </Provider>
   );
 }

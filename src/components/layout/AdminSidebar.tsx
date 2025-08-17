@@ -13,6 +13,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  Boxes,
 } from "lucide-react";
 
 export function AdminSidebar() {
@@ -70,7 +71,7 @@ export function AdminSidebar() {
     {
       id: "inventory",
       title: "Inventory",
-      icon: <Package className="w-5 h-5" />,
+      icon: <Boxes className="w-5 h-5" />,
       href: "/dashboard/inventory",
       subItems: [
         { title: "Stock Overview", href: "/dashboard/inventory" },
@@ -114,7 +115,7 @@ export function AdminSidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
         <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-xl">DC</span>
           </div>
           <div>
@@ -134,28 +135,28 @@ export function AdminSidebar() {
                 href={item.href}
                 className={`flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   isActive(item.href)
-                    ? "bg-primary-50 text-primary-700"
+                    ? "bg-blue-50 text-blue-700"
                     : "text-gray-700 hover:bg-gray-100"
                 }`}
+                onClick={(e) => {
+                  if (item.subItems.length > 0) {
+                    e.preventDefault();
+                    toggleMenu(item.id);
+                  }
+                }}
               >
                 <div className="flex items-center space-x-3">
                   {item.icon}
                   <span>{item.title}</span>
                 </div>
                 {item.subItems.length > 0 && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleMenu(item.id);
-                    }}
-                    className="p-1 hover:bg-gray-200 rounded"
-                  >
+                  <div>
                     {expandedMenus.includes(item.id) ? (
                       <ChevronDown className="w-4 h-4" />
                     ) : (
                       <ChevronRight className="w-4 h-4" />
                     )}
-                  </button>
+                  </div>
                 )}
               </Link>
             </div>
@@ -169,7 +170,7 @@ export function AdminSidebar() {
                     href={subItem.href}
                     className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
                       isActive(subItem.href)
-                        ? "bg-primary-50 text-primary-700"
+                        ? "bg-blue-50 text-blue-700"
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
                   >

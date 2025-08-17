@@ -1,115 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Reuse mockProducts from above
-const mockProducts = [
-  {
-    id: "1",
-    name: "Premium Basmati Rice",
-    description: "High-quality aged basmati rice",
-    price: 250,
-    weight: 1.0,
-    category: "Rice & Grains",
-    images: ["/images/products/basmati-rice.jpg"],
-    stock: 50,
-    isEligibleForFreeDelivery: true,
-    isActive: true,
-    lowStockThreshold: 10,
-    supplier: "Local Supplier",
-    costPrice: 200,
-    margin: 25,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
+import dbConnect from "@/lib/mongodb";
+import Order from "@/models/Order";
+import { getCurrentAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
+    const search = searchParams.get("search");
+    const status = searchParams.get("status");
+    const paymentStatus = searchParams.get("paymentStatus");
 
-    // Mock orders data
-    const mockOrders = [
-      {
-        id: "1",
-        customerId: "customer-1",
-        customer: {
-          id: "customer-1",
-          phoneNumber: "+919876543210",
-          name: "John Doe",
-          addresses: [],
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        items: [
-          {
-            id: "item-1",
-            product: mockProducts[0],
-            quantity: 2,
-            price: 250,
-            returned: false,
-            returnedQuantity: 0,
-          },
-        ],
-        totalAmount: 500,
-        totalWeight: 2.0,
-        deliveryType: "delivery" as const,
-        paymentMethod: "prepaid" as const,
-        paymentStatus: "completed" as const,
-        orderStatus: "delivered" as const,
-        deliveryFee: 0,
-        invoiceNumber: "INV240001",
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      },
-      {
-        id: "2",
-        customerId: "customer-2",
-        customer: {
-          id: "customer-2",
-          phoneNumber: "+919876543211",
-          name: "Jane Smith",
-          addresses: [],
-          createdAt: "2024-01-02T00:00:00Z",
-        },
-        items: [
-          {
-            id: "item-2",
-            product: mockProducts[0],
-            quantity: 1,
-            price: 250,
-            returned: false,
-            returnedQuantity: 0,
-          },
-        ],
-        totalAmount: 250,
-        totalWeight: 1.0,
-        deliveryType: "pickup" as const,
-        paymentMethod: "cash_on_pickup" as const,
-        paymentStatus: "pending" as const,
-        orderStatus: "pending" as const,
-        deliveryFee: 0,
-        invoiceNumber: "INV240002",
-        createdAt: "2024-01-02T00:00:00Z",
-        updatedAt: "2024-01-02T00:00:00Z",
-      },
-    ];
+    // Build query
+    const query: any = {};
 
-    // Apply pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedOrders = mockOrders.slice(startIndex, endIndex);
+    if (search) {
+      query.$or = [
+        { orderId: { $regex: search, $options: "i" } },
+        { invoiceNumber: { $regex: search, $options: "i" } },
+        { "customer.phoneNumber": { $regex: search, $options: "i" } },
+        { "customer.name": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (status) {
+      query.orderStatus = status;
+    }
+
+    if (paymentStatus) {
+      query.paymentStatus = paymentStatus;
+    }
+
+    // Execute query with pagination
+    const total = await Order.countDocuments(query);
+    const orders = await Order.find(query)
+      .populate("customerId")
+      .populate("items.productId")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip((page - 1) * limit)
+      .lean();
 
     return NextResponse.json({
-      data: paginatedOrders,
+      success: true,
+      data: orders,
       pagination: {
         page,
         limit,
-        total: mockOrders.length,
-        totalPages: Math.ceil(mockOrders.length / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error) {
-    console.error("Get admin orders error:", error);
+    console.error("Get orders error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

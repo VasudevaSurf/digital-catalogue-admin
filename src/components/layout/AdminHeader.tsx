@@ -2,16 +2,22 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { adminLogout } from "@/store/slices/adminAuthSlice";
+import Link from "next/link"; // Add this import
 import { Bell, User, LogOut, Settings, Search } from "lucide-react";
 
 export function AdminHeader() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
-  const { user } = useAppSelector((state) => state.adminAuth);
+  const [user, setUser] = useState<any>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Get user info from localStorage or API
+    const userData = localStorage.getItem("adminUser");
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -28,8 +34,13 @@ export function AdminHeader() {
   }, []);
 
   const handleLogout = async () => {
-    await dispatch(adminLogout());
-    router.push("/login");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      localStorage.removeItem("adminUser");
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -42,7 +53,7 @@ export function AdminHeader() {
             <input
               type="text"
               placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -61,7 +72,7 @@ export function AdminHeader() {
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="flex items-center space-x-3 p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="text-left">

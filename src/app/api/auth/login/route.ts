@@ -1,21 +1,11 @@
-// src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import dbConnect from "@/lib/mongodb";
+import Admin from "@/models/Admin";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
-// For demo purposes - in production, use database
-const DEMO_ADMIN = {
-  username: "admin",
-  password: "admin123",
-  user: {
-    id: "1",
-    username: "admin",
-    email: "admin@digitalcatalogue.com",
-    role: "admin" as const,
-    permissions: ["all"],
-    lastLogin: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  },
-};
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,32 +18,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Demo authentication - replace with actual database check
-    if (username === DEMO_ADMIN.username && password === DEMO_ADMIN.password) {
-      // Generate a simple token for demo (in production, use JWT)
-      const token = Buffer.from(`${username}:${Date.now()}`).toString("base64");
+    // Connect to database
+    await dbConnect();
 
-      // Set cookie
-      const cookieStore = await cookies();
-      cookieStore.set("admin-token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: "/",
-      });
+    // Find admin user
+    const admin = await Admin.findOne({ username }).lean();
 
-      return NextResponse.json({
-        success: true,
-        user: DEMO_ADMIN.user,
-      });
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
-    // Invalid credentials
-    return NextResponse.json(
-      { success: false, message: "Invalid credentials" },
-      { status: 401 }
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, admin.password);
+
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { success: false, message: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
+
+    // Update last login
+    await Admin.findByIdAndUpdate(admin._id, { lastLogin: new Date() });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: admin._id.toString(),
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
     );
+
+    // Set cookie
+    const cookieStore = await cookies();
+    cookieStore.set("admin-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: admin._id.toString(),
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+        lastLogin: admin.lastLogin,
+      },
+    });
   } catch (error: any) {
     console.error("Login error:", error);
     return NextResponse.json(

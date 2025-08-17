@@ -2,16 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { adminLogin } from "@/store/slices/adminAuthSlice";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.adminAuth);
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -20,15 +17,38 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     if (!formData.username || !formData.password) {
+      setError("Please fill in all fields");
       return;
     }
 
-    const result = await dispatch(adminLogin(formData));
+    setIsLoading(true);
 
-    if (adminLogin.fulfilled.match(result)) {
-      router.push("/dashboard");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user data in localStorage for client-side access
+        localStorage.setItem("adminUser", JSON.stringify(data.user));
+        router.push("/dashboard");
+      } else {
+        setError(data.message || "Invalid credentials");
+      }
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

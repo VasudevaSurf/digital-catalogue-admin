@@ -1,50 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Mock data for demo - replace with actual database queries
-const mockProducts = [
-  {
-    id: "1",
-    name: "Premium Basmati Rice",
-    description: "High-quality aged basmati rice",
-    price: 250,
-    weight: 1.0,
-    category: "Rice & Grains",
-    images: ["/images/products/basmati-rice.jpg"],
-    stock: 50,
-    isEligibleForFreeDelivery: true,
-    isActive: true,
-    lowStockThreshold: 10,
-    supplier: "Local Supplier",
-    costPrice: 200,
-    margin: 25,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  // Add more mock products as needed
-];
+import dbConnect from "@/lib/mongodb";
+import Product from "@/models/Product";
+import { getCurrentAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
+    const search = searchParams.get("search");
+    const category = searchParams.get("category");
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
 
-    // Apply pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedProducts = mockProducts.slice(startIndex, endIndex);
+    // Build query
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    // Execute query with pagination
+    const total = await Product.countDocuments(query);
+    const products = await Product.find(query)
+      .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1 })
+      .limit(limit)
+      .skip((page - 1) * limit)
+      .lean();
 
     return NextResponse.json({
-      data: paginatedProducts,
+      success: true,
+      data: products,
       pagination: {
         page,
         limit,
-        total: mockProducts.length,
-        totalPages: Math.ceil(mockProducts.length / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error) {
-    console.error("Get admin products error:", error);
+    console.error("Get products error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -54,21 +67,34 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+
     const productData = await request.json();
 
-    // In production, save to database
-    const newProduct = {
-      id: Date.now().toString(),
-      ...productData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Generate SKU if not provided
+    if (!productData.sku) {
+      productData.sku = `PRD${Date.now()}`;
+    }
 
-    return NextResponse.json(newProduct);
-  } catch (error) {
+    const product = new Product(productData);
+    await product.save();
+
+    return NextResponse.json({
+      success: true,
+      data: product,
+    });
+  } catch (error: any) {
     console.error("Create product error:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }
