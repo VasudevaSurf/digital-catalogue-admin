@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
-export default function AdminHomePage() {
+export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAppSelector(
     (state) => state.adminAuth
@@ -25,7 +25,7 @@ export default function AdminHomePage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="text-center">
         <LoadingSpinner size="large" />
-        <p className="mt-4 text-gray-600">Loading...</p>
+        <p className="mt-4 text-gray-600">Redirecting...</p>
       </div>
     </div>
   );

@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Reuse mockProducts from above
+const mockProducts = [
+  {
+    id: "1",
+    name: "Premium Basmati Rice",
+    description: "High-quality aged basmati rice",
+    price: 250,
+    weight: 1.0,
+    category: "Rice & Grains",
+    images: ["/images/products/basmati-rice.jpg"],
+    stock: 50,
+    isEligibleForFreeDelivery: true,
+    isActive: true,
+    lowStockThreshold: 10,
+    supplier: "Local Supplier",
+    costPrice: 200,
+    margin: 25,
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+  },
+];
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -39,7 +61,37 @@ export async function GET(request: NextRequest) {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       },
-      // Add more mock orders
+      {
+        id: "2",
+        customerId: "customer-2",
+        customer: {
+          id: "customer-2",
+          phoneNumber: "+919876543211",
+          name: "Jane Smith",
+          addresses: [],
+          createdAt: "2024-01-02T00:00:00Z",
+        },
+        items: [
+          {
+            id: "item-2",
+            product: mockProducts[0],
+            quantity: 1,
+            price: 250,
+            returned: false,
+            returnedQuantity: 0,
+          },
+        ],
+        totalAmount: 250,
+        totalWeight: 1.0,
+        deliveryType: "pickup" as const,
+        paymentMethod: "cash_on_pickup" as const,
+        paymentStatus: "pending" as const,
+        orderStatus: "pending" as const,
+        deliveryFee: 0,
+        invoiceNumber: "INV240002",
+        createdAt: "2024-01-02T00:00:00Z",
+        updatedAt: "2024-01-02T00:00:00Z",
+      },
     ];
 
     // Apply pagination
