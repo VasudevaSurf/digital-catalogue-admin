@@ -344,7 +344,7 @@ export const authAPI = {
   }) => apiUtils.post("/api/auth/login", credentials),
 
   adminLogin: (credentials: { username: string; password: string }) =>
-    apiUtils.post("/api/auth/login", credentials), // Fixed path
+    apiUtils.post("/api/auth/login", credentials),
 
   logout: () => apiUtils.post("/api/auth/logout"),
 
@@ -408,6 +408,18 @@ export const adminAPI = {
 
   deleteProduct: (id: string) => apiUtils.delete(`/api/admin/products/${id}`),
 
+  // Categories
+  getCategories: () => apiUtils.get("/api/admin/categories"),
+
+  createCategory: (category: any) =>
+    apiUtils.post("/api/admin/categories", category),
+
+  updateCategory: (id: string, category: any) =>
+    apiUtils.put(`/api/admin/categories/${id}`, category),
+
+  deleteCategory: (id: string) =>
+    apiUtils.delete(`/api/admin/categories/${id}`),
+
   // Orders
   getOrders: (params?: any) => apiUtils.get("/api/admin/orders", params),
 
@@ -419,24 +431,48 @@ export const adminAPI = {
   getRecentOrders: (params?: any) =>
     apiUtils.get("/api/admin/orders/recent", params),
 
-  // Customers
-  getCustomers: (params?: any) => apiUtils.get("/api/admin/customers", params),
-
-  getCustomerById: (id: string) => apiUtils.get(`/api/admin/customers/${id}`),
+  exportOrders: (params?: any) =>
+    apiUtils.exportCSV("/api/admin/orders/export", "orders", params),
 
   // Inventory
+  getInventory: () => apiUtils.get("/api/admin/inventory"),
+
   getStockAlerts: () => apiUtils.get("/api/admin/inventory/alerts"),
 
   getStockMovements: (params?: any) =>
     apiUtils.get("/api/admin/inventory/movements", params),
 
-  // Messages
-  sendMessage: (data: any) => apiUtils.post("/api/admin/messages/send", data),
+  createStockMovement: (movement: any) =>
+    apiUtils.post("/api/admin/inventory/movements", movement),
 
-  getMessageTemplates: () => apiUtils.get("/api/admin/messages/templates"),
+  adjustStock: (productId: string, adjustment: any) =>
+    apiUtils.post(`/api/admin/inventory/adjust`, {
+      productId,
+      ...adjustment,
+    }),
 
-  createMessageTemplate: (template: any) =>
-    apiUtils.post("/api/admin/messages/templates", template),
+  // Analytics
+  getProductAnalytics: (params?: any) =>
+    apiUtils.get("/api/admin/analytics/products", params),
+
+  getRevenueAnalytics: (params?: any) =>
+    apiUtils.get("/api/admin/analytics/revenue", params),
+
+  getOrderAnalytics: (params?: any) =>
+    apiUtils.get("/api/admin/analytics/orders", params),
+
+  // Import/Export
+  importProducts: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiUtils.post("/api/admin/products/import", formData);
+  },
+
+  exportProducts: (params?: any) =>
+    apiUtils.exportCSV("/api/admin/products/export", "products", params),
+
+  exportInventory: (params?: any) =>
+    apiUtils.exportExcel("/api/admin/inventory/export", "inventory", params),
 };
 
 // Error handling utilities

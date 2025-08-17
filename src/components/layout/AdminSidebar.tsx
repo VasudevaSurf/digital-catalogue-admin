@@ -7,10 +7,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  Users,
   BarChart3,
-  MessageSquare,
-  Settings,
   ChevronDown,
   ChevronRight,
   Boxes,
@@ -62,13 +59,6 @@ export function AdminSidebar() {
       ],
     },
     {
-      id: "customers",
-      title: "Customers",
-      icon: <Users className="w-5 h-5" />,
-      href: "/customers",
-      subItems: [],
-    },
-    {
       id: "inventory",
       title: "Inventory",
       icon: <Boxes className="w-5 h-5" />,
@@ -80,28 +70,10 @@ export function AdminSidebar() {
       ],
     },
     {
-      id: "messages",
-      title: "Messages",
-      icon: <MessageSquare className="w-5 h-5" />,
-      href: "/messages",
-      subItems: [
-        { title: "WhatsApp", href: "/messages/whatsapp" },
-        { title: "SMS", href: "/messages/sms" },
-        { title: "Templates", href: "/messages/templates" },
-      ],
-    },
-    {
       id: "analytics",
       title: "Analytics",
       icon: <BarChart3 className="w-5 h-5" />,
       href: "/analytics",
-      subItems: [],
-    },
-    {
-      id: "settings",
-      title: "Settings",
-      icon: <Settings className="w-5 h-5" />,
-      href: "/settings",
       subItems: [],
     },
   ];

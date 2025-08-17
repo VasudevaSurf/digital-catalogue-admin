@@ -12,12 +12,9 @@ export interface IOrderItem {
 
 export interface IOrder extends Document {
   orderId: string;
-  customerId: mongoose.Types.ObjectId;
-  customer: {
-    name: string;
-    phoneNumber: string;
-    email?: string;
-  };
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
   items: IOrderItem[];
   totalAmount: number;
   totalWeight: number;
@@ -57,12 +54,9 @@ const OrderItemSchema = new Schema<IOrderItem>({
 const OrderSchema = new Schema<IOrder>(
   {
     orderId: { type: String, required: true, unique: true },
-    customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
-    customer: {
-      name: { type: String, required: true },
-      phoneNumber: { type: String, required: true },
-      email: { type: String },
-    },
+    customerName: { type: String, required: true },
+    customerPhone: { type: String, required: true },
+    customerEmail: { type: String },
     items: [OrderItemSchema],
     totalAmount: { type: Number, required: true },
     totalWeight: { type: Number, required: true },
@@ -107,8 +101,8 @@ const OrderSchema = new Schema<IOrder>(
     timestamps: true,
   }
 );
+
 OrderSchema.index({ orderId: 1 });
-OrderSchema.index({ customerId: 1 });
 OrderSchema.index({ orderStatus: 1 });
 OrderSchema.index({ paymentStatus: 1 });
 OrderSchema.index({ createdAt: -1 });

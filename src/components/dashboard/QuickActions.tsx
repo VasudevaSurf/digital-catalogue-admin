@@ -1,15 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Plus,
-  Package,
-  ShoppingBag,
-  Users,
-  MessageSquare,
-  BarChart3,
-  Settings,
-} from "lucide-react";
+import { Plus, Package, ShoppingBag, BarChart3, Boxes } from "lucide-react";
 
 export function QuickActions() {
   const actions = [
@@ -28,18 +20,11 @@ export function QuickActions() {
       color: "bg-blue-500 hover:bg-blue-600",
     },
     {
-      title: "View Customers",
-      description: "Manage your customer database",
-      href: "/customers",
-      icon: <Users className="w-6 h-6" />,
+      title: "View Inventory",
+      description: "Check stock levels and alerts",
+      href: "/inventory",
+      icon: <Boxes className="w-6 h-6" />,
       color: "bg-purple-500 hover:bg-purple-600",
-    },
-    {
-      title: "Send Messages",
-      description: "Send WhatsApp or SMS to customers",
-      href: "/messages",
-      icon: <MessageSquare className="w-6 h-6" />,
-      color: "bg-orange-500 hover:bg-orange-600",
     },
     {
       title: "View Analytics",
@@ -47,13 +32,6 @@ export function QuickActions() {
       href: "/analytics",
       icon: <BarChart3 className="w-6 h-6" />,
       color: "bg-indigo-500 hover:bg-indigo-600",
-    },
-    {
-      title: "Settings",
-      description: "Configure store and delivery settings",
-      href: "/settings",
-      icon: <Settings className="w-6 h-6" />,
-      color: "bg-gray-500 hover:bg-gray-600",
     },
   ];
 
@@ -64,7 +42,7 @@ export function QuickActions() {
         <p className="text-sm text-gray-600">Common tasks and shortcuts</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {actions.map((action) => (
           <Link
             key={action.href}

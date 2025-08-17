@@ -72,7 +72,7 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
                 </div>
                 <div className="flex items-center space-x-4 mt-1">
                   <p className="text-sm text-gray-600">
-                    {order.customer?.name || order.customer?.phoneNumber}
+                    {order.customerName || order.customerPhone}
                   </p>
                   <p className="text-sm text-gray-500">
                     {formatDateTime(order.createdAt)}

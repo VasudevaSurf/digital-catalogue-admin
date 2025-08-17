@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
 
     try {
       const recentOrders = await Order.find()
-        .populate("customerId", "name phoneNumber email")
         .sort({ createdAt: -1 })
         .limit(limit)
         .lean();

@@ -4,7 +4,6 @@ import { DashboardStats } from "@/types/admin";
 import {
   TrendingUp,
   TrendingDown,
-  Users,
   Package,
   ShoppingBag,
   DollarSign,
@@ -15,7 +14,6 @@ interface StatsGridProps {
 }
 
 export function StatsGrid({ stats }: StatsGridProps) {
-  // Handle null or undefined stats
   if (!stats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -58,11 +56,11 @@ export function StatsGrid({ stats }: StatsGridProps) {
       bgColor: "bg-blue-50",
     },
     {
-      title: "Total Customers",
-      value: (stats.totalCustomers || 0).toString(),
+      title: "Monthly Orders",
+      value: (stats.monthlyOrders || 0).toString(),
       change: "+15.3%",
       trend: "up" as const,
-      icon: <Users className="w-6 h-6" />,
+      icon: <ShoppingBag className="w-6 h-6" />,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },

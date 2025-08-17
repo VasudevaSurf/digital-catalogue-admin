@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
       query.$or = [
         { orderId: { $regex: search, $options: "i" } },
         { invoiceNumber: { $regex: search, $options: "i" } },
-        { "customer.phoneNumber": { $regex: search, $options: "i" } },
-        { "customer.name": { $regex: search, $options: "i" } },
+        { customerPhone: { $regex: search, $options: "i" } },
+        { customerName: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
     // Execute query with pagination
     const total = await Order.countDocuments(query);
     const orders = await Order.find(query)
-      .populate("customerId")
       .populate("items.productId")
       .sort({ createdAt: -1 })
       .limit(limit)

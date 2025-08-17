@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Order from "@/models/Order";
 import Product from "@/models/Product";
-import Customer from "@/models/Customer";
 import { getCurrentAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -21,7 +20,6 @@ export async function GET(request: NextRequest) {
     let stats = {
       totalOrders: 0,
       totalRevenue: 0,
-      totalCustomers: 0,
       totalProducts: 0,
       pendingOrders: 0,
       lowStockProducts: 0,
@@ -39,7 +37,6 @@ export async function GET(request: NextRequest) {
       const [
         totalOrders,
         totalProducts,
-        totalCustomers,
         monthlyOrders,
         lowStockProducts,
         pendingOrders,
@@ -48,7 +45,6 @@ export async function GET(request: NextRequest) {
       ] = await Promise.allSettled([
         Order.countDocuments(),
         Product.countDocuments({ isActive: true }),
-        Customer.countDocuments(),
         Order.countDocuments({
           createdAt: { $gte: startOfMonth, $lte: endOfMonth },
         }),
@@ -76,8 +72,6 @@ export async function GET(request: NextRequest) {
         stats.totalOrders = totalOrders.value || 0;
       if (totalProducts.status === "fulfilled")
         stats.totalProducts = totalProducts.value || 0;
-      if (totalCustomers.status === "fulfilled")
-        stats.totalCustomers = totalCustomers.value || 0;
       if (monthlyOrders.status === "fulfilled")
         stats.monthlyOrders = monthlyOrders.value || 0;
       if (lowStockProducts.status === "fulfilled")
@@ -100,7 +94,6 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       console.error("Error fetching some stats:", error);
-      // Return partial stats if some queries fail
     }
 
     return NextResponse.json({
@@ -109,13 +102,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Get dashboard stats error:", error);
-    // Return default stats on error
     return NextResponse.json({
       success: true,
       data: {
         totalOrders: 0,
         totalRevenue: 0,
-        totalCustomers: 0,
         totalProducts: 0,
         pendingOrders: 0,
         lowStockProducts: 0,

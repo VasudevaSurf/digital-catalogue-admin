@@ -60,10 +60,10 @@ export function OrdersTable({ orders, onStatusUpdate }: OrdersTableProps) {
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm text-gray-900">
-                  {order.customer?.name || order.customerId?.name}
+                  {order.customerName}
                 </div>
                 <div className="text-sm text-gray-500">
-                  {order.customer?.phoneNumber || order.customerId?.phoneNumber}
+                  {order.customerPhone}
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bell, User, LogOut, Settings, Search } from "lucide-react";
+import toast from "react-hot-toast";
 
 export function AdminHeader() {
   const router = useRouter();
@@ -35,11 +36,27 @@ export function AdminHeader() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      localStorage.removeItem("adminUser");
-      router.push("/login");
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        // Clear all auth data
+        localStorage.removeItem("adminUser");
+        localStorage.removeItem("adminToken");
+
+        // Show success message
+        toast.success("Logged out successfully");
+
+        // Redirect to login page using replace to prevent back navigation
+        router.replace("/login");
+      } else {
+        toast.error("Logout failed. Please try again.");
+      }
     } catch (error) {
       console.error("Logout error:", error);
+      toast.error("An error occurred during logout");
     }
   };
 

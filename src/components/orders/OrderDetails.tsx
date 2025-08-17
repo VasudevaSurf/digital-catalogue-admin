@@ -90,21 +90,19 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-600">Name</p>
-              <p className="font-medium">
-                {order.customer?.name || order.customerId?.name || "Guest"}
-              </p>
+              <p className="font-medium">{order.customerName || "Guest"}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Phone</p>
               <p className="font-medium flex items-center">
                 <Phone className="w-4 h-4 mr-1" />
-                {order.customer?.phoneNumber || order.customerId?.phoneNumber}
+                {order.customerPhone}
               </p>
             </div>
-            {order.customer?.email && (
+            {order.customerEmail && (
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium">{order.customer.email}</p>
+                <p className="font-medium">{order.customerEmail}</p>
               </div>
             )}
           </div>

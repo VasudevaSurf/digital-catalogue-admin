@@ -13,18 +13,6 @@ export interface Product {
   updatedAt: string;
 }
 
-export interface Customer {
-  id: string;
-  name?: string;
-  phoneNumber: string;
-  email?: string;
-  addresses: Address[];
-  totalOrders?: number;
-  totalSpent?: number;
-  lastOrderDate?: string;
-  createdAt: string;
-}
-
 export interface Address {
   id?: string;
   street: string;
@@ -49,8 +37,9 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderId?: string;
-  customer?: Customer;
-  customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
   items: OrderItem[];
   totalAmount: number;
   totalWeight?: number;
@@ -89,7 +78,7 @@ export interface CartState {
 
 export interface AuthState {
   isAuthenticated: boolean;
-  customer: Customer | null;
+  user: any | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -125,33 +114,6 @@ export interface ConfirmDialog {
   cancelText?: string;
   onConfirm: () => void;
   onCancel?: () => void;
-}
-
-export interface WhatsAppMessage {
-  id: string;
-  customerId: string;
-  customer?: Customer;
-  orderId?: string;
-  order?: Order;
-  type: "order_confirmation" | "status_update" | "promotional";
-  content: string;
-  status: "sent" | "delivered" | "read" | "failed";
-  sentAt: string;
-  deliveredAt?: string;
-  readAt?: string;
-}
-
-export interface SMSMessage {
-  id: string;
-  customerId: string;
-  customer?: Customer;
-  orderId?: string;
-  order?: Order;
-  type: "order_confirmation" | "status_update" | "promotional";
-  content: string;
-  status: "sent" | "delivered" | "failed";
-  sentAt: string;
-  deliveredAt?: string;
 }
 
 export interface StockAlert {

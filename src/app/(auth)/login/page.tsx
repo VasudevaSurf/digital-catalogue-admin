@@ -1,19 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+
+  // Check if already authenticated
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const response = await fetch("/api/auth/verify");
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        // User is already authenticated, redirect to dashboard
+        router.replace("/dashboard");
+      }
+    } catch (error) {
+      console.error("Auth check error:", error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +64,17 @@ export default function AdminLoginPage() {
       if (data.success) {
         // Store user data in localStorage for client-side access
         localStorage.setItem("adminUser", JSON.stringify(data.user));
-        router.push("/dashboard");
+        toast.success("Login successful!");
+
+        // Use replace instead of push to prevent going back to login
+        router.replace("/dashboard");
       } else {
         setError(data.message || "Invalid credentials");
+        toast.error(data.message || "Invalid credentials");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +86,15 @@ export default function AdminLoginPage() {
       [e.target.name]: e.target.value,
     });
   };
+
+  // Show loading while checking auth status
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

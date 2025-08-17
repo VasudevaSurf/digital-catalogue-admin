@@ -7,34 +7,39 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AdminHeader } from "@/components/layout/AdminHeader";
 import { NotificationContainer } from "@/components/ui/NotificationContainer";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/verify");
-        const data = await response.json();
-
-        if (data.success && data.user) {
-          setIsAuthenticated(true);
-        } else {
-          router.push("/login");
-        }
-      } catch (error) {
-        router.push("/login");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     checkAuth();
-  }, [router]);
+  }, [pathname]); // Re-check auth when route changes
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch("/api/auth/verify");
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        setIsAuthenticated(true);
+        // Store user data in localStorage
+        localStorage.setItem("adminUser", JSON.stringify(data.user));
+      } else {
+        // Not authenticated, redirect to login
+        router.replace("/login");
+      }
+    } catch (error) {
+      console.error("Auth check error:", error);
+      router.replace("/login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -48,7 +53,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return null;
+    return null; // Router will handle redirect
   }
 
   return (
