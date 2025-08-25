@@ -30,7 +30,9 @@ export function ProductTable({
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedProducts(checked ? products.map((p) => p.id) : []);
+    setSelectedProducts(
+      checked ? products.map((p) => p.id || p._id || "") : []
+    );
   };
 
   const handleSelectProduct = (productId: string, checked: boolean) => {
@@ -75,7 +77,10 @@ export function ProductTable({
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               <input
                 type="checkbox"
-                checked={selectedProducts.length === products.length}
+                checked={
+                  selectedProducts.length === products.length &&
+                  products.length > 0
+                }
                 onChange={(e) => handleSelectAll(e.target.checked)}
                 className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
@@ -101,13 +106,14 @@ export function ProductTable({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {products.map((product) => {
+          {products.map((product, index) => {
+            const productId = product.id || product._id || `product-${index}`;
             const stockStatus = getStockStatus(product);
-            const isSelected = selectedProducts.includes(product.id);
+            const isSelected = selectedProducts.includes(productId);
 
             return (
               <tr
-                key={product.id}
+                key={productId}
                 className={`hover:bg-gray-50 transition-colors ${
                   isSelected ? "bg-primary-50" : ""
                 }`}
@@ -117,7 +123,7 @@ export function ProductTable({
                     type="checkbox"
                     checked={isSelected}
                     onChange={(e) =>
-                      handleSelectProduct(product.id, e.target.checked)
+                      handleSelectProduct(productId, e.target.checked)
                     }
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
@@ -129,9 +135,10 @@ export function ProductTable({
                       {product.images && product.images.length > 0 ? (
                         <Image
                           src={product.images[0]}
-                          alt={product.name}
+                          alt={product.name || "Product image"}
                           fill
                           className="object-cover"
+                          sizes="40px"
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full text-gray-400">
@@ -146,6 +153,11 @@ export function ProductTable({
                       <div className="text-sm text-gray-500">
                         {formatWeight(product.weight)}
                       </div>
+                      {product.sku && (
+                        <div className="text-xs text-gray-400">
+                          SKU: {product.sku}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>
@@ -188,8 +200,15 @@ export function ProductTable({
 
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
-                    onClick={() => onStatusToggle(product.id, product.isActive)}
+                    onClick={() =>
+                      onStatusToggle(productId, product.isActive ?? true)
+                    }
                     className="flex items-center"
+                    title={
+                      product.isActive
+                        ? "Active - Click to deactivate"
+                        : "Inactive - Click to activate"
+                    }
                   >
                     {product.isActive ? (
                       <ToggleRight className="w-8 h-8 text-green-500" />
@@ -211,7 +230,7 @@ export function ProductTable({
 
                     <button
                       onClick={() =>
-                        window.open(`/products/${product.id}`, "_blank")
+                        window.open(`/products/${productId}`, "_blank")
                       }
                       className="text-gray-600 hover:text-gray-900 p-1 rounded-full hover:bg-gray-50 transition-colors"
                       title="View product"
@@ -220,7 +239,15 @@ export function ProductTable({
                     </button>
 
                     <button
-                      onClick={() => onDelete(product.id)}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete "${product.name}"?`
+                          )
+                        ) {
+                          onDelete(productId);
+                        }
+                      }}
                       className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition-colors"
                       title="Delete product"
                     >
@@ -233,6 +260,53 @@ export function ProductTable({
           })}
         </tbody>
       </table>
+
+      {/* Bulk Actions Bar */}
+      {selectedProducts.length > 0 && (
+        <div className="bg-blue-50 border-t border-blue-200 px-6 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-blue-700">
+              {selectedProducts.length} product
+              {selectedProducts.length > 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => {
+                  // Handle bulk status toggle
+                  console.log("Bulk toggle status for:", selectedProducts);
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Toggle Status
+              </button>
+              <button
+                onClick={() => {
+                  // Handle bulk delete
+                  if (
+                    window.confirm(
+                      `Are you sure you want to delete ${selectedProducts.length} products?`
+                    )
+                  ) {
+                    selectedProducts.forEach((productId) =>
+                      onDelete(productId)
+                    );
+                    setSelectedProducts([]);
+                  }
+                }}
+                className="text-sm text-red-600 hover:text-red-800 font-medium"
+              >
+                Delete Selected
+              </button>
+              <button
+                onClick={() => setSelectedProducts([])}
+                className="text-sm text-gray-600 hover:text-gray-800 font-medium"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

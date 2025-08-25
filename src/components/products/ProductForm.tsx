@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { LoadingButton } from "@/components/ui/LoadingButton";
-import { X } from "lucide-react";
+import { X, Upload, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 
 interface ProductFormProps {
   product?: any;
@@ -27,10 +28,15 @@ export function ProductForm({
     lowStockThreshold: "10",
     isEligibleForFreeDelivery: true,
     isActive: true,
-    images: [],
+    images: [] as string[],
   });
 
   const [categories, setCategories] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
+    {}
+  );
 
   useEffect(() => {
     if (product) {
@@ -64,16 +70,127 @@ export function ProductForm({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (imageFiles.length > 5) {
+      alert("Maximum 5 images allowed");
+      return;
+    }
+
+    setSelectedFiles((prev) => [...prev, ...imageFiles].slice(0, 5));
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeUploadedImage = async (index: number) => {
+    const imageUrl = formData.images[index];
+
+    try {
+      // Delete from Vercel Blob
+      const response = await fetch(
+        `/api/upload?url=${encodeURIComponent(imageUrl)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Remove from state only after successful deletion
+        setFormData((prev) => ({
+          ...prev,
+          images: prev.images.filter((_, i) => i !== index),
+        }));
+      } else {
+        console.error("Failed to delete image:", result.message);
+        // Still remove from UI even if deletion failed (maybe image was already deleted)
+        setFormData((prev) => ({
+          ...prev,
+          images: prev.images.filter((_, i) => i !== index),
+        }));
+      }
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      // Still remove from UI in case of network error
+      setFormData((prev) => ({
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index),
+      }));
+    }
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    if (selectedFiles.length === 0) return [];
+
+    setUploadingImages(true);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+
+        const data = await response.json();
+        uploadedUrls.push(data.url);
+
+        setUploadProgress((prev) => ({
+          ...prev,
+          [file.name]: 100,
+        }));
+      }
+
+      setSelectedFiles([]);
+      setUploadProgress({});
+      return uploadedUrls;
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error;
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      ...formData,
-      price: parseFloat(formData.price),
-      weight: parseFloat(formData.weight),
-      stock: parseInt(formData.stock),
-      costPrice: parseFloat(formData.costPrice),
-      lowStockThreshold: parseInt(formData.lowStockThreshold),
-    });
+
+    try {
+      let allImages = [...formData.images];
+
+      if (selectedFiles.length > 0) {
+        const newUrls = await uploadImages();
+        allImages = [...allImages, ...newUrls];
+      }
+
+      const productData = {
+        ...formData,
+        price: parseFloat(formData.price),
+        weight: parseFloat(formData.weight),
+        stock: parseInt(formData.stock),
+        costPrice: parseFloat(formData.costPrice),
+        lowStockThreshold: parseInt(formData.lowStockThreshold),
+        images: allImages,
+      };
+
+      await onSubmit(productData);
+    } catch (error) {
+      console.error("Form submission error:", error);
+      alert("Failed to upload images. Please try again.");
+    }
   };
 
   const handleChange = (
@@ -242,6 +359,111 @@ export function ProductForm({
         />
       </div>
 
+      {/* Images Upload Section */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Product Images (Max 5)
+        </label>
+
+        {/* Existing Images */}
+        {formData.images.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-600 mb-2">
+              Current Images:
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {formData.images.map((url, index) => (
+                <div
+                  key={`existing-${index}-${url}`}
+                  className="relative group"
+                >
+                  <Image
+                    src={url}
+                    alt={`Product image ${index + 1}`}
+                    width={150}
+                    height={150}
+                    className="w-full h-24 object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedImage(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    title="Remove image"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* New Images to Upload */}
+        {selectedFiles.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-600 mb-2">
+              New Images to Upload:
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={`new-${index}-${file.name}-${file.size}`}
+                  className="relative group"
+                >
+                  <div className="w-full h-24 bg-gray-100 rounded-lg border flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p
+                    className="text-xs text-gray-600 mt-1 truncate"
+                    title={file.name}
+                  >
+                    {file.name}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedFile(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    title="Remove file"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  {uploadProgress[file.name] && (
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-blue-500 h-1 rounded-b-lg transition-all duration-300"
+                      style={{ width: `${uploadProgress[file.name]}%` }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* File Upload Input */}
+        {formData.images.length + selectedFiles.length < 5 && (
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="image-upload"
+              disabled={uploadingImages}
+            />
+            <label htmlFor="image-upload" className="cursor-pointer">
+              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">
+                Click to upload images or drag and drop
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                PNG, JPG, GIF up to 10MB each
+              </p>
+            </label>
+          </div>
+        )}
+      </div>
+
       {/* Checkboxes */}
       <div className="flex items-center space-x-6">
         <label className="flex items-center">
@@ -273,8 +495,14 @@ export function ProductForm({
       <div className="flex justify-end">
         <LoadingButton
           type="submit"
-          isLoading={isLoading}
-          loadingText={product ? "Updating..." : "Creating..."}
+          isLoading={isLoading || uploadingImages}
+          loadingText={
+            uploadingImages
+              ? "Uploading images..."
+              : product
+              ? "Updating..."
+              : "Creating..."
+          }
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           {product ? "Update Product" : "Create Product"}

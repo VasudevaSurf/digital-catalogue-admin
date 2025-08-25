@@ -1,3 +1,4 @@
+// src/app/api/products/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Product from "@/models/Product";
@@ -96,7 +97,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     await dbConnect();
 
     const { id } = await params;
-    const product = await Product.findByIdAndDelete(id);
+
+    // Get product first to clean up images
+    const product = await Product.findById(id);
 
     if (!product) {
       return NextResponse.json(
@@ -104,6 +107,32 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         { status: 404 }
       );
     }
+
+    // Clean up images from blob storage
+    if (product.images && product.images.length > 0) {
+      try {
+        const { del } = await import("@vercel/blob");
+
+        const deletePromises = product.images.map(async (url: string) => {
+          try {
+            const urlObj = new URL(url);
+            const pathname = urlObj.pathname.startsWith("/")
+              ? urlObj.pathname.slice(1)
+              : urlObj.pathname;
+            await del(pathname);
+          } catch (error) {
+            console.error(`Failed to delete image ${url}:`, error);
+          }
+        });
+
+        await Promise.allSettled(deletePromises);
+      } catch (error) {
+        console.error("Error cleaning up images:", error);
+      }
+    }
+
+    // Delete the product
+    await Product.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,

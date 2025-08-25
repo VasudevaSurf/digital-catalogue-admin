@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -11,19 +11,20 @@ import toast from "react-hot-toast";
 export default function OrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const resolvedParams = use(params);
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchOrder();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(`/api/admin/orders/${params.id}`);
+      const response = await fetch(`/api/admin/orders/${resolvedParams.id}`);
       const data = await response.json();
 
       if (data.success) {
@@ -45,7 +46,9 @@ export default function OrderDetailPage({
 
   const handleDownloadInvoice = async () => {
     try {
-      const response = await fetch(`/api/admin/orders/${params.id}/invoice`);
+      const response = await fetch(
+        `/api/admin/orders/${resolvedParams.id}/invoice`
+      );
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

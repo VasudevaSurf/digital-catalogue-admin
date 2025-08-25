@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { ProductForm } from "@/components/products/ProductForm";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -11,20 +11,21 @@ import toast from "react-hot-toast";
 export default function EditProductPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const resolvedParams = use(params);
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchProduct();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   const fetchProduct = async () => {
     try {
-      const response = await fetch(`/api/admin/products/${params.id}`);
+      const response = await fetch(`/api/admin/products/${resolvedParams.id}`);
       const data = await response.json();
 
       if (data.success) {
@@ -43,7 +44,7 @@ export default function EditProductPage({
   const handleSubmit = async (productData: any) => {
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/admin/products/${params.id}`, {
+      const response = await fetch(`/api/admin/products/${resolvedParams.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productData),
