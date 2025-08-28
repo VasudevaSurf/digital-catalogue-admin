@@ -44,7 +44,7 @@ export function ProductTable({
   const getStockStatus = (product: InventoryItem) => {
     if (product.stock === 0) {
       return { status: "out-of-stock", color: "text-red-600", bg: "bg-red-50" };
-    } else if (product.stock <= product.lowStockThreshold) {
+    } else if (product.stock <= (product.lowStockThreshold || 10)) {
       return {
         status: "low-stock",
         color: "text-yellow-600",
@@ -186,7 +186,7 @@ export function ProductTable({
                     >
                       {product.stock}
                     </span>
-                    {product.stock <= product.lowStockThreshold &&
+                    {product.stock <= (product.lowStockThreshold || 10) &&
                       product.stock > 0 && (
                         <AlertTriangle className="w-4 h-4 text-yellow-500 ml-1" />
                       )}

@@ -39,12 +39,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query with pagination
+    // Execute query with pagination
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
       .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1 })
       .limit(limit)
       .skip((page - 1) * limit)
       .lean();
+
+    // Convert ObjectId to string for frontend
+    const formattedProducts = products.map((product) => ({
+      ...product,
+      id: product._id.toString(),
+      _id: product._id.toString(),
+    }));
 
     return NextResponse.json({
       success: true,

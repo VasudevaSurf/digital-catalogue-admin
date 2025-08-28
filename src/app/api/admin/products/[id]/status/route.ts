@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import dbConnect from "@/lib/mongodb";
+import Product from "@/models/Product";
+import { getCurrentAdmin } from "@/lib/auth";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const productId = params.id;
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+
+    const { id } = await params; // Await the params
     const { isActive } = await request.json();
 
-    if (!productId) {
+    if (!id) {
       return NextResponse.json(
         { success: false, message: "Product ID is required" },
         { status: 400 }
@@ -22,33 +36,24 @@ export async function PATCH(
       );
     }
 
-    // In production, update in database
-    // Example:
-    // const updatedProduct = await updateProductStatus(productId, isActive);
+    // Update the product in the database
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { isActive },
+      { new: true, runValidators: true }
+    );
 
-    // For demo, return mock updated product
-    const updatedProduct = {
-      id: productId,
-      name: "Sample Product",
-      description: "Sample description",
-      price: 250,
-      weight: 1.0,
-      category: "Sample Category",
-      images: [],
-      stock: 50,
-      isEligibleForFreeDelivery: true,
-      isActive,
-      lowStockThreshold: 10,
-      supplier: "Sample Supplier",
-      costPrice: 200,
-      margin: 25,
-      createdAt: "2024-01-01T00:00:00Z",
-      updatedAt: new Date().toISOString(),
-    };
+    if (!updatedProduct) {
+      return NextResponse.json(
+        { success: false, message: "Product not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
       data: updatedProduct,
+      message: `Product ${isActive ? "activated" : "deactivated"} successfully`,
     });
   } catch (error) {
     console.error("Update product status error:", error);

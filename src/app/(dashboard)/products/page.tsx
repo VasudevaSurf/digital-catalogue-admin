@@ -37,8 +37,11 @@ export default function ProductsPage() {
       if (data.success) {
         setProducts(data.data);
         setPagination(data.pagination);
+      } else {
+        toast.error("Failed to fetch products");
       }
     } catch (error) {
+      console.error("Error fetching products:", error);
       toast.error("Failed to fetch products");
     } finally {
       setIsLoading(false);
@@ -63,11 +66,13 @@ export default function ProductsPage() {
 
       if (response.ok) {
         toast.success("Product deleted successfully");
-        fetchProducts();
+        fetchProducts(); // Refresh the list
       } else {
-        toast.error("Failed to delete product");
+        const data = await response.json();
+        toast.error(data.message || "Failed to delete product");
       }
     } catch (error) {
+      console.error("Error deleting product:", error);
       toast.error("Error deleting product");
     }
   };
@@ -83,11 +88,24 @@ export default function ProductsPage() {
         body: JSON.stringify({ isActive: !currentStatus }),
       });
 
-      if (response.ok) {
-        toast.success("Product status updated");
-        fetchProducts();
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(data.message || "Product status updated");
+
+        // Update the product in the local state
+        setProducts((prevProducts) =>
+          prevProducts.map((product) =>
+            (product._id || product.id) === productId
+              ? { ...product, isActive: !currentStatus }
+              : product
+          )
+        );
+      } else {
+        toast.error(data.message || "Failed to update status");
       }
     } catch (error) {
+      console.error("Error updating status:", error);
       toast.error("Failed to update status");
     }
   };
