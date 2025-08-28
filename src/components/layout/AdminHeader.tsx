@@ -1,24 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAppDispatch, useAppSelector } from "@/store";
+import { adminLogout } from "@/store/slices/adminAuthSlice";
 import { Bell, User, LogOut, Settings, Search } from "lucide-react";
-import toast from "react-hot-toast";
 
 export function AdminHeader() {
+  const dispatch = useAppDispatch();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAppSelector((state) => state.adminAuth);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Get user info from localStorage or API
-    const userData = localStorage.getItem("adminUser");
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -34,30 +28,9 @@ export function AdminHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        // Clear all auth data
-        localStorage.removeItem("adminUser");
-        localStorage.removeItem("adminToken");
-
-        // Show success message
-        toast.success("Logged out successfully");
-
-        // Redirect to login page using replace to prevent back navigation
-        router.replace("/login");
-      } else {
-        toast.error("Logout failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("An error occurred during logout");
-    }
+  const handleLogout = () => {
+    dispatch(adminLogout());
+    router.push("/login");
   };
 
   return (
@@ -70,7 +43,7 @@ export function AdminHeader() {
             <input
               type="text"
               placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -89,7 +62,7 @@ export function AdminHeader() {
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="flex items-center space-x-3 p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="text-left">
@@ -105,7 +78,7 @@ export function AdminHeader() {
             {isUserMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-50">
                 <Link
-                  href="/profile"
+                  href="/dashboard/profile"
                   onClick={() => setIsUserMenuOpen(false)}
                   className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >

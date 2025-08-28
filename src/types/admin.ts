@@ -185,6 +185,23 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     total: number;
-    totalPages: number;
+    totalPages?: number;
   };
+}
+
+export interface CarouselImage {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CarouselState {
+  images: CarouselImage[];
+  isLoading: boolean;
+  error: string | null;
 }

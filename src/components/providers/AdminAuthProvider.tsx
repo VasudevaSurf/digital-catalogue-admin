@@ -22,7 +22,7 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
     // Try to load admin user from server (using cookie)
     dispatch(loadAdminUser());
   }, [dispatch]);
-  
+
   // Redirect to login if not authenticated (except on login page)
   useEffect(() => {
     if (!isLoading && !isAuthenticated && pathname !== "/login") {
