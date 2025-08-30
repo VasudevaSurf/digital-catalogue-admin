@@ -1,6 +1,18 @@
 "use client";
 
-import { OrderFilter } from "@/types/admin";
+interface OrderFilter {
+  status?: string[];
+  paymentStatus?: string[];
+  deliveryType?: string[];
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  amountRange?: {
+    min: number;
+    max: number;
+  };
+}
 
 interface OrderFiltersProps {
   filters: OrderFilter;

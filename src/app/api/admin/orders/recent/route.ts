@@ -1,3 +1,4 @@
+// src/app/api/admin/orders/recent/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Order from "@/models/Order";
@@ -24,9 +25,25 @@ export async function GET(request: NextRequest) {
         .limit(limit)
         .lean();
 
+      // Transform orders to match frontend expectations
+      const transformedOrders = recentOrders.map((order) => ({
+        id: order._id.toString(),
+        _id: order._id.toString(),
+        orderId: order.orderId,
+        invoiceNumber: order.invoiceNumber,
+        customerName: order.customerInfo?.name || "Guest",
+        customerPhone: order.customerInfo?.phoneNumber,
+        customerEmail: order.customerInfo?.email,
+        items: order.items || [],
+        totalAmount: order.totalAmount,
+        orderStatus: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+      }));
+
       return NextResponse.json({
         success: true,
-        data: recentOrders || [],
+        data: transformedOrders,
       });
     } catch (error) {
       console.error("Error fetching recent orders:", error);
