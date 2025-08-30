@@ -21,9 +21,7 @@ import {
   Save,
   X,
   CheckCircle2,
-  Printer,
   Download,
-  Eye,
 } from "lucide-react";
 
 interface OrderDetailsProps {
@@ -38,6 +36,7 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
   );
   const [statusNotes, setStatusNotes] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   if (!order) return null;
 
@@ -80,42 +79,39 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
     }
   };
 
-  const handleViewInvoice = () => {
-    const orderId = order.id || order._id;
-    const invoiceUrl = `/api/admin/orders/${orderId}/invoice`;
-    window.open(invoiceUrl, "_blank", "width=1000,height=800,scrollbars=yes");
-  };
+  const handleDownloadInvoicePDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const orderId = order.id || order._id;
+      const response = await fetch(`/api/admin/orders/${orderId}/invoice/pdf`, {
+        method: "GET",
+      });
 
-  const handleDownloadInvoice = () => {
-    const orderId = order.id || order._id;
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
 
-    // Method 1: Download as HTML file (works immediately)
-    const downloadUrl = `/api/admin/orders/${orderId}/invoice/download`;
+      // Get the PDF blob
+      const blob = await response.blob();
 
-    // Create temporary link and trigger download
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = `invoice-${order.invoiceNumber || order.orderId}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice-${order.invoiceNumber || order.orderId}.pdf`;
 
-  const handlePrintInvoice = () => {
-    const orderId = order.id || order._id;
-    const invoiceUrl = `/api/admin/orders/${orderId}/invoice?print=true`;
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
 
-    // Open in new window and auto-trigger print dialog
-    const printWindow = window.open(
-      invoiceUrl,
-      "_blank",
-      "width=1000,height=800,scrollbars=yes"
-    );
-
-    if (!printWindow) {
-      alert(
-        "Please allow popups to open the print dialog. You can also try disabling popup blockers for this site."
-      );
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -136,8 +132,20 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Order Summary */}
+      {/* Order Summary with PDF Download */}
       <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Order Summary</h2>
+          <button
+            onClick={handleDownloadInvoicePDF}
+            disabled={isGeneratingPDF}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isGeneratingPDF ? "Generating PDF..." : "Download Invoice PDF"}
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
             <p className="text-sm text-gray-600">Order Status</p>

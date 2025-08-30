@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
 import dbConnect from "@/lib/mongodb";
 import Order from "@/models/Order";
 import { getCurrentAdmin } from "@/lib/auth";
+import { jsPDF } from "jspdf";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -30,33 +30,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Generate HTML content
-    const invoiceHTML = generateInvoiceHTML(order);
-
-    // Generate PDF using Puppeteer
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
-    const page = await browser.newPage();
-    await page.setContent(invoiceHTML, { waitUntil: "networkidle0" });
-
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20px",
-        right: "20px",
-        bottom: "20px",
-        left: "20px",
-      },
-    });
-
-    await browser.close();
+    // Generate PDF using jsPDF
+    const pdf = generateInvoicePDF(order);
+    const pdfBuffer = Buffer.from(pdf.output("arraybuffer"));
 
     // Return PDF file
-    return new NextResponse(pdf, {
+    return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="invoice-${
@@ -74,14 +53,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-function generateInvoiceHTML(order: any): string {
-  // Same HTML generation logic as before, but optimized for PDF
+function generateInvoicePDF(order: any): jsPDF {
+  // Create new PDF document with proper encoding
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+  });
+
+  // Helper functions
   const formatCurrency = (amount: number) => {
-    if (!amount) return "₹0";
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-    }).format(amount);
+    if (!amount) return "Rs. 0";
+    return `Rs. ${amount.toLocaleString("en-IN")}`;
   };
 
   const formatDate = (date: string | Date) => {
@@ -93,316 +77,305 @@ function generateInvoiceHTML(order: any): string {
     });
   };
 
+  // Set up colors (RGB values)
+  const primaryColor = [37, 99, 235]; // Blue
+  const darkColor = [31, 41, 55]; // Dark gray
+  const lightColor = [107, 114, 128]; // Light gray
+  const whiteColor = [255, 255, 255];
+
+  // Page setup
+  const pageWidth = pdf.internal.pageSize.width;
+  const pageHeight = pdf.internal.pageSize.height;
+  const margin = 20;
+  let yPosition = margin;
+
+  // Company Header Background
+  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.rect(0, 0, pageWidth, 50, "F");
+
+  // Company Info
+  pdf.setTextColor(whiteColor[0], whiteColor[1], whiteColor[2]);
+  pdf.setFontSize(28);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("DIGITAL CATALOGUE", margin, 20);
+
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("Your Premium Digital Store", margin, 30);
+  pdf.text("Phone: +91 98765 43210", margin, 38);
+  pdf.text("Email: info@digitalcatalogue.com", margin, 45);
+
+  // Invoice Title
+  pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  pdf.setFontSize(32);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("INVOICE", pageWidth - margin - 45, 25, { align: "right" });
+
+  yPosition = 65;
+
+  // Invoice Details Box
+  pdf.setDrawColor(lightColor[0], lightColor[1], lightColor[2]);
+  pdf.setFillColor(248, 249, 250);
+  pdf.rect(pageWidth - 80, yPosition - 5, 60, 40, "FD");
+
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+
+  const invoiceDetails = [
+    {
+      label: "Invoice #:",
+      value: order.invoiceNumber || order.orderId || "N/A",
+    },
+    { label: "Order ID:", value: order.orderId || "N/A" },
+    { label: "Date:", value: formatDate(order.createdAt) },
+    { label: "Status:", value: (order.orderStatus || "pending").toUpperCase() },
+  ];
+
+  invoiceDetails.forEach((detail, index) => {
+    const lineY = yPosition + index * 8;
+    pdf.text(detail.label, pageWidth - 75, lineY);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(detail.value, pageWidth - 45, lineY);
+    pdf.setFont("helvetica", "bold");
+  });
+
+  yPosition = 120;
+
+  // Customer Information Section
+  pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  pdf.text("BILL TO:", margin, yPosition);
+
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "normal");
+  yPosition += 8;
+
   const customerName =
     order.customerInfo?.name || order.customerName || "Guest Customer";
   const customerPhone =
     order.customerInfo?.phoneNumber || order.customerPhone || "N/A";
   const customerEmail = order.customerInfo?.email || order.customerEmail || "";
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - ${order.invoiceNumber || order.orderId}</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-            background-color: white;
-        }
-        
-        .invoice-container {
-            background: white;
-            padding: 40px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .invoice-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #2563eb;
-        }
-        
-        .company-info h1 {
-            color: #2563eb;
-            margin: 0 0 10px 0;
-            font-size: 2.5em;
-            font-weight: bold;
-        }
-        
-        .company-info p {
-            margin: 5px 0;
-            color: #6b7280;
-        }
-        
-        .invoice-details {
-            text-align: right;
-        }
-        
-        .invoice-details h2 {
-            color: #dc2626;
-            margin: 0 0 15px 0;
-            font-size: 2em;
-        }
-        
-        .invoice-details p {
-            margin: 8px 0;
-            font-size: 16px;
-        }
-        
-        .billing-section {
-            display: flex;
-            justify-content: space-between;
-            margin: 40px 0;
-            gap: 40px;
-        }
-        
-        .billing-info, .shipping-info {
-            flex: 1;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 6px;
-        }
-        
-        .billing-info h3, .shipping-info h3 {
-            color: #374151;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 40px 0;
-            background: white;
-        }
-        
-        .items-table th,
-        .items-table td {
-            border: 1px solid #e5e7eb;
-            padding: 15px;
-            text-align: left;
-        }
-        
-        .items-table th {
-            background-color: #2563eb;
-            color: white;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 14px;
-        }
-        
-        .items-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-        
-        .items-table .amount {
-            text-align: right;
-            font-weight: 600;
-        }
-        
-        .total-section {
-            float: right;
-            width: 350px;
-            margin-top: 30px;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 6px;
-        }
-        
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 16px;
-        }
-        
-        .total-row.final {
-            font-weight: bold;
-            font-size: 20px;
-            border-bottom: 2px solid #374151;
-            color: #2563eb;
-            margin-top: 10px;
-            padding-top: 15px;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: capitalize;
-        }
-        
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-confirmed { background: #dbeafe; color: #1e40af; }
-        .status-preparing { background: #fed7aa; color: #ea580c; }
-        .status-ready { background: #e0e7ff; color: #5b21b6; }
-        .status-delivered { background: #dcfce7; color: #166534; }
-        .status-cancelled { background: #fee2e2; color: #dc2626; }
-        
-        .footer {
-            margin-top: 60px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
-            border-top: 2px solid #e5e7eb;
-            padding-top: 20px;
-        }
-        
-        .thank-you {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2563eb;
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="invoice-container">
-        <div class="invoice-header">
-            <div class="company-info">
-                <h1>Digital Catalogue</h1>
-                <p><strong>Your Premium Digital Store</strong></p>
-                <p>📱 Phone: +91 98765 43210</p>
-                <p>📧 Email: info@digitalcatalogue.com</p>
-                <p>🌐 Website: www.digitalcatalogue.com</p>
-            </div>
-            <div class="invoice-details">
-                <h2>INVOICE</h2>
-                <p><strong>Invoice #:</strong> ${
-                  order.invoiceNumber || order.orderId
-                }</p>
-                <p><strong>Order ID:</strong> ${order.orderId}</p>
-                <p><strong>Date:</strong> ${formatDate(order.createdAt)}</p>
-                <p><strong>Status:</strong> 
-                    <span class="status-badge status-${
-                      order.orderStatus || "pending"
-                    }">${order.orderStatus || "pending"}</span>
-                </p>
-            </div>
-        </div>
+  const customerDetails = [
+    customerName,
+    `Phone: ${customerPhone}`,
+    customerEmail ? `Email: ${customerEmail}` : null,
+    `Payment: ${
+      order.paymentMethod === "cash_on_pickup" ? "Cash on Pickup" : "Prepaid"
+    }`,
+    `Delivery: ${
+      order.deliveryType === "pickup" ? "Store Pickup" : "Home Delivery"
+    }`,
+  ].filter(Boolean);
 
-        <div class="billing-section">
-            <div class="billing-info">
-                <h3>📋 Bill To:</h3>
-                <p><strong>${customerName}</strong></p>
-                <p>📱 Phone: ${customerPhone}</p>
-                ${customerEmail ? `<p>📧 Email: ${customerEmail}</p>` : ""}
-                <p>💳 Payment: ${
-                  order.paymentMethod === "cash_on_pickup"
-                    ? "Cash on Pickup"
-                    : "Prepaid"
-                }</p>
-                <p>🚚 Delivery: ${
-                  order.deliveryType === "pickup"
-                    ? "Store Pickup"
-                    : "Home Delivery"
-                }</p>
-            </div>
-            ${
-              order.deliveryAddress
-                ? `
-            <div class="shipping-info">
-                <h3>🚚 Ship To:</h3>
-                <p>${order.deliveryAddress.street}</p>
-                <p>${order.deliveryAddress.city}, ${order.deliveryAddress.state}</p>
-                <p>📍 Pincode: ${order.deliveryAddress.pincode}</p>
-            </div>
-            `
-                : `
-            <div class="shipping-info">
-                <h3>🏪 Store Pickup</h3>
-                <p><strong>Digital Catalogue Store</strong></p>
-                <p>123 Main Street</p>
-                <p>Your City, State</p>
-            </div>
-            `
-            }
-        </div>
+  customerDetails.forEach((detail) => {
+    pdf.text(detail, margin, yPosition);
+    yPosition += 7;
+  });
 
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th>Item Description</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th>Weight (kg)</th>
-                    <th class="amount">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${(order.items || [])
-                  .map(
-                    (item: any) => `
-                    <tr>
-                        <td>
-                            <strong>${
-                              item.product?.name ||
-                              item.productName ||
-                              "Unknown Product"
-                            }</strong>
-                        </td>
-                        <td>${item.quantity || 0}</td>
-                        <td>${formatCurrency(item.price || 0)}</td>
-                        <td>${item.weight || 0}</td>
-                        <td class="amount">${formatCurrency(
-                          item.totalPrice ||
-                            (item.price || 0) * (item.quantity || 0)
-                        )}</td>
-                    </tr>
-                `
-                  )
-                  .join("")}
-            </tbody>
-        </table>
+  // Delivery Address (if applicable)
+  if (order.deliveryAddress) {
+    pdf.setFont("helvetica", "bold");
+    pdf.text("SHIP TO:", pageWidth / 2, yPosition - 35);
+    pdf.setFont("helvetica", "normal");
 
-        <div class="total-section">
-            <div class="total-row">
-                <span>Subtotal:</span>
-                <span>${formatCurrency(
-                  order.subtotal ||
-                    (order.totalAmount || 0) - (order.deliveryFee || 0)
-                )}</span>
-            </div>
-            <div class="total-row">
-                <span>Delivery Fee:</span>
-                <span>${formatCurrency(order.deliveryFee || 0)}</span>
-            </div>
-            <div class="total-row final">
-                <span>TOTAL AMOUNT:</span>
-                <span>${formatCurrency(order.totalAmount || 0)}</span>
-            </div>
-        </div>
+    const addressLines = [
+      order.deliveryAddress.street,
+      `${order.deliveryAddress.city}, ${order.deliveryAddress.state}`,
+      `Pincode: ${order.deliveryAddress.pincode}`,
+    ];
 
-        <div style="clear: both;"></div>
+    addressLines.forEach((line, index) => {
+      pdf.text(line, pageWidth / 2, yPosition - 28 + index * 7);
+    });
+  }
 
-        <div class="footer">
-            <p class="thank-you">Thank You for Your Business! 🙏</p>
-            <p><strong>Payment Status:</strong> ${
-              order.paymentStatus || "pending"
-            } | <strong>Order Status:</strong> ${
-    order.orderStatus || "pending"
-  }</p>
-            <p>For any queries, please contact us at +91 98765 43210 or info@digitalcatalogue.com</p>
-            <p style="margin-top: 20px; font-size: 12px;">
-                This is a computer-generated invoice. No signature required.<br>
-                © ${new Date().getFullYear()} Digital Catalogue. All rights reserved.
-            </p>
-        </div>
-    </div>
-</body>
-</html>`;
+  yPosition += 20;
+
+  // Items Table
+  const tableStartY = yPosition;
+  const tableHeight = 12;
+
+  // Table Header
+  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.rect(margin, tableStartY, pageWidth - 2 * margin, tableHeight, "F");
+
+  pdf.setTextColor(whiteColor[0], whiteColor[1], whiteColor[2]);
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "bold");
+
+  // Column headers
+  const headers = [
+    { text: "ITEM DESCRIPTION", x: margin + 3 },
+    { text: "QTY", x: margin + 85 },
+    { text: "PRICE", x: margin + 105 },
+    { text: "WEIGHT", x: margin + 130 },
+    { text: "TOTAL", x: pageWidth - margin - 25, align: "right" },
+  ];
+
+  headers.forEach((header) => {
+    if (header.align === "right") {
+      pdf.text(header.text, header.x, tableStartY + 8, { align: "right" });
+    } else {
+      pdf.text(header.text, header.x, tableStartY + 8);
+    }
+  });
+
+  yPosition = tableStartY + tableHeight + 5;
+  pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  pdf.setFont("helvetica", "normal");
+
+  // Items
+  let subtotal = 0;
+  (order.items || []).forEach((item: any, index: number) => {
+    if (yPosition > pageHeight - 60) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    const itemTotal =
+      item.totalPrice || (item.price || 0) * (item.quantity || 0);
+    subtotal += itemTotal;
+
+    // Alternate row background
+    if (index % 2 === 0) {
+      pdf.setFillColor(248, 249, 250);
+      pdf.rect(margin, yPosition - 3, pageWidth - 2 * margin, 10, "F");
+    }
+
+    // Item details
+    const itemName =
+      item.product?.name || item.productName || "Unknown Product";
+    const truncatedName =
+      itemName.length > 30 ? itemName.substring(0, 30) + "..." : itemName;
+
+    pdf.text(truncatedName, margin + 3, yPosition + 3);
+    pdf.text((item.quantity || 0).toString(), margin + 85, yPosition + 3);
+    pdf.text(formatCurrency(item.price || 0), margin + 105, yPosition + 3);
+    pdf.text(`${item.weight || 0}kg`, margin + 130, yPosition + 3);
+    pdf.text(formatCurrency(itemTotal), pageWidth - margin - 3, yPosition + 3, {
+      align: "right",
+    });
+
+    yPosition += 10;
+  });
+
+  // Totals Section
+  yPosition += 10;
+  const totalsStartX = pageWidth - 70;
+  const totalsWidth = 50;
+
+  // Totals box background
+  pdf.setFillColor(248, 249, 250);
+  pdf.rect(totalsStartX, yPosition - 5, totalsWidth, 45, "F");
+  pdf.setDrawColor(lightColor[0], lightColor[1], lightColor[2]);
+  pdf.rect(totalsStartX, yPosition - 5, totalsWidth, 45, "S");
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+
+  // Subtotal
+  pdf.text("Subtotal:", totalsStartX + 3, yPosition + 3);
+  pdf.text(
+    formatCurrency(order.subtotal || subtotal),
+    totalsStartX + totalsWidth - 3,
+    yPosition + 3,
+    { align: "right" }
+  );
+  yPosition += 8;
+
+  // Delivery Fee
+  pdf.text("Delivery Fee:", totalsStartX + 3, yPosition + 3);
+  pdf.text(
+    formatCurrency(order.deliveryFee || 0),
+    totalsStartX + totalsWidth - 3,
+    yPosition + 3,
+    { align: "right" }
+  );
+  yPosition += 8;
+
+  // Free Delivery Notice
+  if ((order.deliveryFee || 0) === 0) {
+    pdf.setTextColor(5, 150, 105);
+    pdf.setFontSize(9);
+    pdf.text("Free Delivery Applied", totalsStartX + 3, yPosition + 3);
+    pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    yPosition += 8;
+  }
+
+  // Total line
+  pdf.setDrawColor(darkColor[0], darkColor[1], darkColor[2]);
+  pdf.line(
+    totalsStartX + 3,
+    yPosition,
+    totalsStartX + totalsWidth - 3,
+    yPosition
+  );
+  yPosition += 6;
+
+  // Total Amount
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
+  pdf.text("TOTAL:", totalsStartX + 3, yPosition + 3);
+  pdf.text(
+    formatCurrency(order.totalAmount || 0),
+    totalsStartX + totalsWidth - 3,
+    yPosition + 3,
+    { align: "right" }
+  );
+
+  yPosition += 20;
+
+  // Order Notes
+  if (order.orderNotes) {
+    if (yPosition > pageHeight - 40) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text("ORDER NOTES:", margin, yPosition);
+    yPosition += 8;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    const splitNotes = pdf.splitTextToSize(
+      order.orderNotes,
+      pageWidth - 2 * margin
+    );
+    pdf.text(splitNotes, margin, yPosition);
+    yPosition += splitNotes.length * 5;
+  }
+
+  // Footer
+  const footerY = pageHeight - 35;
+  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  pdf.rect(0, footerY, pageWidth, 35, "F");
+
+  pdf.setTextColor(whiteColor[0], whiteColor[1], whiteColor[2]);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.text("Thank You for Your Business!", pageWidth / 2, footerY + 12, {
+    align: "center",
+  });
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.text(
+    "For any queries, contact us at +91 98765 43210 or info@digitalcatalogue.com",
+    pageWidth / 2,
+    footerY + 20,
+    { align: "center" }
+  );
+  pdf.text(
+    `© ${new Date().getFullYear()} Digital Catalogue. All rights reserved.`,
+    pageWidth / 2,
+    footerY + 28,
+    { align: "center" }
+  );
+
+  return pdf;
 }
