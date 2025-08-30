@@ -80,6 +80,81 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
     }
   };
 
+  const handleViewInvoice = () => {
+    const orderId = order.id || order._id;
+    const invoiceUrl = `/api/admin/orders/${orderId}/invoice`;
+    window.open(invoiceUrl, "_blank", "width=1000,height=800,scrollbars=yes");
+  };
+
+  const handleDownloadInvoice = () => {
+    const orderId = order.id || order._id;
+    const invoiceUrl = `/api/admin/orders/${orderId}/invoice`;
+
+    // Open in new window for printing/PDF saving
+    const printWindow = window.open(
+      invoiceUrl,
+      "_blank",
+      "width=1000,height=800,scrollbars=yes"
+    );
+
+    if (printWindow) {
+      printWindow.onload = () => {
+        // Add a helpful instruction overlay
+        setTimeout(() => {
+          const instructions = printWindow.document.createElement("div");
+          instructions.innerHTML = `
+            <div style="
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              background: #059669;
+              color: white;
+              padding: 15px 20px;
+              border-radius: 8px;
+              z-index: 1000;
+              font-family: Arial, sans-serif;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              max-width: 300px;
+            ">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                  <strong>💡 Save as PDF:</strong><br>
+                  <small>Press Ctrl+P (Cmd+P on Mac)<br>Choose "Save as PDF" → Click Save</small>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" style="
+                  background: transparent;
+                  border: 1px solid white;
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 3px;
+                  cursor: pointer;
+                  margin-left: 10px;
+                ">✕</button>
+              </div>
+              <button onclick="window.print()" style="
+                background: white;
+                color: #059669;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-top: 10px;
+                width: 100%;
+                font-weight: bold;
+              ">🖨️ Print / Save as PDF</button>
+            </div>
+          `;
+          printWindow.document.body.appendChild(instructions);
+        }, 500);
+      };
+    } else {
+      // Fallback if popup is blocked
+      alert(
+        "Please allow popups to open the invoice. You can also try disabling popup blockers for this site."
+      );
+    }
+  };
+
   const cancelStatusEdit = () => {
     setSelectedStatus(order.orderStatus);
     setStatusNotes("");
@@ -97,36 +172,6 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Action Buttons */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Order Actions</h2>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePrintInvoice}
-              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Print Invoice
-            </button>
-            <button
-              onClick={handleViewInvoice}
-              className="flex items-center px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              View Invoice
-            </button>
-            <button
-              onClick={handleDownloadInvoice}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download Invoice
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Order Summary */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
