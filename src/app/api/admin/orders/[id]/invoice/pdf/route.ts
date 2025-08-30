@@ -1,5 +1,5 @@
-// src/app/api/admin/orders/[id]/invoice/download/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import puppeteer from "puppeteer";
 import dbConnect from "@/lib/mongodb";
 import Order from "@/models/Order";
 import { getCurrentAdmin } from "@/lib/auth";
@@ -30,30 +30,52 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // For now, we'll return the HTML content that can be printed as PDF
-    // In production, you might want to use puppeteer or similar for actual PDF generation
-    const invoiceHTML = generatePrintableInvoiceHTML(order);
+    // Generate HTML content
+    const invoiceHTML = generateInvoiceHTML(order);
 
-    // Return as HTML file that can be saved/printed as PDF
-    return new NextResponse(invoiceHTML, {
+    // Generate PDF using Puppeteer
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(invoiceHTML, { waitUntil: "networkidle0" });
+
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20px",
+        right: "20px",
+        bottom: "20px",
+        left: "20px",
+      },
+    });
+
+    await browser.close();
+
+    // Return PDF file
+    return new NextResponse(pdf, {
       headers: {
-        "Content-Type": "text/html; charset=utf-8",
+        "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="invoice-${
           order.invoiceNumber || order.orderId
-        }.html"`,
+        }.pdf"`,
         "Cache-Control": "no-cache",
       },
     });
   } catch (error) {
-    console.error("Download invoice error:", error);
+    console.error("Generate PDF error:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: "Failed to generate PDF" },
       { status: 500 }
     );
   }
 }
 
-function generatePrintableInvoiceHTML(order: any): string {
+function generateInvoiceHTML(order: any): string {
+  // Same HTML generation logic as before, but optimized for PDF
   const formatCurrency = (amount: number) => {
     if (!amount) return "₹0";
     return new Intl.NumberFormat("en-IN", {
@@ -71,17 +93,6 @@ function generatePrintableInvoiceHTML(order: any): string {
     });
   };
 
-  const formatDateTime = (date: string | Date) => {
-    if (!date) return "N/A";
-    return new Date(date).toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const customerName =
     order.customerInfo?.name || order.customerName || "Guest Customer";
   const customerPhone =
@@ -95,63 +106,20 @@ function generatePrintableInvoiceHTML(order: any): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice - ${order.invoiceNumber || order.orderId}</title>
     <style>
-        @media print {
-            body { 
-                background-color: white !important; 
-                padding: 0 !important; 
-                margin: 0 !important;
-                font-size: 12px !important;
-            }
-            .invoice-container { 
-                box-shadow: none !important; 
-                margin: 0 !important;
-                padding: 20px !important;
-            }
-            .no-print { display: none !important; }
-            .print-button { display: none !important; }
-            .page-break { page-break-before: always; }
-        }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
             margin: 0;
             padding: 20px;
-            background-color: #f8f9fa;
+            background-color: white;
         }
         
         .invoice-container {
             background: white;
             padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             max-width: 800px;
             margin: 0 auto;
-        }
-        
-        .print-instructions {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .print-button {
-            background: #2196f3;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px;
-        }
-        
-        .print-button:hover {
-            background: #1976d2;
         }
         
         .invoice-header {
@@ -217,9 +185,6 @@ function generatePrintableInvoiceHTML(order: any): string {
             border-collapse: collapse;
             margin: 40px 0;
             background: white;
-            border-radius: 6px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .items-table th,
@@ -235,7 +200,6 @@ function generatePrintableInvoiceHTML(order: any): string {
             font-weight: bold;
             text-transform: uppercase;
             font-size: 14px;
-            letter-spacing: 0.5px;
         }
         
         .items-table tr:nth-child(even) {
@@ -289,14 +253,6 @@ function generatePrintableInvoiceHTML(order: any): string {
         .status-delivered { background: #dcfce7; color: #166534; }
         .status-cancelled { background: #fee2e2; color: #dc2626; }
         
-        .notes-section {
-            margin-top: 40px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border-left: 4px solid #2563eb;
-        }
-        
         .footer {
             margin-top: 60px;
             text-align: center;
@@ -304,10 +260,6 @@ function generatePrintableInvoiceHTML(order: any): string {
             font-size: 14px;
             border-top: 2px solid #e5e7eb;
             padding-top: 20px;
-        }
-        
-        .footer p {
-            margin: 8px 0;
         }
         
         .thank-you {
@@ -319,14 +271,6 @@ function generatePrintableInvoiceHTML(order: any): string {
     </style>
 </head>
 <body>
-    <div class="print-instructions no-print">
-        <h3>📄 How to Save/Print as PDF:</h3>
-        <p><strong>Method 1:</strong> Click the "Print/Save as PDF" button below</p>
-        <p><strong>Method 2:</strong> Press <kbd>Ctrl+P</kbd> (or <kbd>Cmd+P</kbd> on Mac) → Choose "Save as PDF" → Click Save</p>
-        <button class="print-button" onclick="window.print()">🖨️ Print / Save as PDF</button>
-        <button class="print-button" onclick="window.close()">❌ Close</button>
-    </div>
-
     <div class="invoice-container">
         <div class="invoice-header">
             <div class="company-info">
@@ -374,17 +318,8 @@ function generatePrintableInvoiceHTML(order: any): string {
             <div class="shipping-info">
                 <h3>🚚 Ship To:</h3>
                 <p>${order.deliveryAddress.street}</p>
-                <p>${order.deliveryAddress.city}, ${
-                    order.deliveryAddress.state
-                  }</p>
+                <p>${order.deliveryAddress.city}, ${order.deliveryAddress.state}</p>
                 <p>📍 Pincode: ${order.deliveryAddress.pincode}</p>
-                ${
-                  order.estimatedDeliveryDate
-                    ? `<p>📅 Est. Delivery: ${formatDate(
-                        order.estimatedDeliveryDate
-                      )}</p>`
-                    : ""
-                }
             </div>
             `
                 : `
@@ -393,14 +328,6 @@ function generatePrintableInvoiceHTML(order: any): string {
                 <p><strong>Digital Catalogue Store</strong></p>
                 <p>123 Main Street</p>
                 <p>Your City, State</p>
-                <p>📍 Pincode: 123456</p>
-                ${
-                  order.estimatedDeliveryDate
-                    ? `<p>📅 Ready by: ${formatDate(
-                        order.estimatedDeliveryDate
-                      )}</p>`
-                    : ""
-                }
             </div>
             `
             }
@@ -427,11 +354,6 @@ function generatePrintableInvoiceHTML(order: any): string {
                               item.productName ||
                               "Unknown Product"
                             }</strong>
-                            ${
-                              item.product?.description
-                                ? `<br><small style="color: #6b7280;">${item.product.description}</small>`
-                                : ""
-                            }
                         </td>
                         <td>${item.quantity || 0}</td>
                         <td>${formatCurrency(item.price || 0)}</td>
@@ -459,16 +381,6 @@ function generatePrintableInvoiceHTML(order: any): string {
                 <span>Delivery Fee:</span>
                 <span>${formatCurrency(order.deliveryFee || 0)}</span>
             </div>
-            ${
-              (order.deliveryFee || 0) === 0
-                ? `
-            <div class="total-row" style="color: #059669;">
-                <span>🎉 Free Delivery Applied</span>
-                <span>-</span>
-            </div>
-            `
-                : ""
-            }
             <div class="total-row final">
                 <span>TOTAL AMOUNT:</span>
                 <span>${formatCurrency(order.totalAmount || 0)}</span>
@@ -476,17 +388,6 @@ function generatePrintableInvoiceHTML(order: any): string {
         </div>
 
         <div style="clear: both;"></div>
-
-        ${
-          order.orderNotes
-            ? `
-        <div class="notes-section">
-            <h3 style="margin: 0 0 10px 0; color: #374151;">📝 Order Notes:</h3>
-            <p style="margin: 0;">${order.orderNotes}</p>
-        </div>
-        `
-            : ""
-        }
 
         <div class="footer">
             <p class="thank-you">Thank You for Your Business! 🙏</p>
@@ -502,23 +403,6 @@ function generatePrintableInvoiceHTML(order: any): string {
             </p>
         </div>
     </div>
-
-    <script>
-        // Auto-print dialog when page loads if requested
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('print') === 'true') {
-            window.onload = function() {
-                setTimeout(() => {
-                    window.print();
-                }, 500);
-            };
-        }
-        
-        // Handle print button click
-        function printInvoice() {
-            window.print();
-        }
-    </script>
 </body>
 </html>`;
 }

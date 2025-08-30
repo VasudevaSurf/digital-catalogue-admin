@@ -88,69 +88,33 @@ export function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
 
   const handleDownloadInvoice = () => {
     const orderId = order.id || order._id;
-    const invoiceUrl = `/api/admin/orders/${orderId}/invoice`;
 
-    // Open in new window for printing/PDF saving
+    // Method 1: Download as HTML file (works immediately)
+    const downloadUrl = `/api/admin/orders/${orderId}/invoice/download`;
+
+    // Create temporary link and trigger download
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `invoice-${order.invoiceNumber || order.orderId}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintInvoice = () => {
+    const orderId = order.id || order._id;
+    const invoiceUrl = `/api/admin/orders/${orderId}/invoice?print=true`;
+
+    // Open in new window and auto-trigger print dialog
     const printWindow = window.open(
       invoiceUrl,
       "_blank",
       "width=1000,height=800,scrollbars=yes"
     );
 
-    if (printWindow) {
-      printWindow.onload = () => {
-        // Add a helpful instruction overlay
-        setTimeout(() => {
-          const instructions = printWindow.document.createElement("div");
-          instructions.innerHTML = `
-            <div style="
-              position: fixed;
-              top: 20px;
-              right: 20px;
-              background: #059669;
-              color: white;
-              padding: 15px 20px;
-              border-radius: 8px;
-              z-index: 1000;
-              font-family: Arial, sans-serif;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-              max-width: 300px;
-            ">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                  <strong>💡 Save as PDF:</strong><br>
-                  <small>Press Ctrl+P (Cmd+P on Mac)<br>Choose "Save as PDF" → Click Save</small>
-                </div>
-                <button onclick="this.parentElement.parentElement.remove()" style="
-                  background: transparent;
-                  border: 1px solid white;
-                  color: white;
-                  padding: 4px 8px;
-                  border-radius: 3px;
-                  cursor: pointer;
-                  margin-left: 10px;
-                ">✕</button>
-              </div>
-              <button onclick="window.print()" style="
-                background: white;
-                color: #059669;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: pointer;
-                margin-top: 10px;
-                width: 100%;
-                font-weight: bold;
-              ">🖨️ Print / Save as PDF</button>
-            </div>
-          `;
-          printWindow.document.body.appendChild(instructions);
-        }, 500);
-      };
-    } else {
-      // Fallback if popup is blocked
+    if (!printWindow) {
       alert(
-        "Please allow popups to open the invoice. You can also try disabling popup blockers for this site."
+        "Please allow popups to open the print dialog. You can also try disabling popup blockers for this site."
       );
     }
   };
