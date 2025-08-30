@@ -83,7 +83,7 @@ export default function OrdersPage() {
     fetchOrders();
   }, [pagination.page, searchQuery, filters]);
 
-  const handleStatusUpdate = async (orderId: string, status: string) => {
+  const handleOrderStatusUpdate = async (orderId: string, status: string) => {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/status`, {
         method: "PATCH",
@@ -95,13 +95,41 @@ export default function OrdersPage() {
 
       if (data.success) {
         toast.success("Order status updated");
-        fetchOrders();
+        fetchOrders(); // Refresh the list
       } else {
         toast.error(data.message || "Failed to update order status");
       }
     } catch (error) {
       console.error("Error updating order status:", error);
       toast.error("Failed to update order status");
+    }
+  };
+
+  const handlePaymentStatusUpdate = async (
+    orderId: string,
+    paymentStatus: string
+  ) => {
+    try {
+      const response = await fetch(
+        `/api/admin/orders/${orderId}/payment-status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentStatus }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Payment status updated");
+        fetchOrders(); // Refresh the list
+      } else {
+        toast.error(data.message || "Failed to update payment status");
+      }
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      toast.error("Failed to update payment status");
     }
   };
 
@@ -154,7 +182,9 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-600">Manage customer orders</p>
+          <p className="text-gray-600">
+            Manage customer orders with simple status updates
+          </p>
         </div>
         <button
           onClick={handleExport}
@@ -165,13 +195,50 @@ export default function OrdersPage() {
         </button>
       </div>
 
+      {/* Quick Stats - Only for the 3 status options */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="text-sm text-gray-600">Total Orders</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {pagination.total}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="text-sm text-gray-600">Confirmed Orders</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {
+              orders.filter((order: any) => order.orderStatus === "confirmed")
+                .length
+            }
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="text-sm text-gray-600">Delivered Orders</div>
+          <div className="text-2xl font-bold text-green-600">
+            {
+              orders.filter((order: any) => order.orderStatus === "delivered")
+                .length
+            }
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="text-sm text-gray-600">Cancelled Orders</div>
+          <div className="text-2xl font-bold text-red-600">
+            {
+              orders.filter((order: any) => order.orderStatus === "cancelled")
+                .length
+            }
+          </div>
+        </div>
+      </div>
+
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search orders..."
+            placeholder="Search orders by ID, customer name, or phone..."
             className="max-w-md"
           />
           <button
@@ -198,7 +265,11 @@ export default function OrdersPage() {
           </div>
         ) : (
           <>
-            <OrdersTable orders={orders} onStatusUpdate={handleStatusUpdate} />
+            <OrdersTable
+              orders={orders}
+              onStatusUpdate={handleOrderStatusUpdate}
+              onPaymentStatusUpdate={handlePaymentStatusUpdate}
+            />
             {pagination.totalPages > 1 && (
               <div className="p-4 border-t">
                 <Pagination
@@ -212,6 +283,27 @@ export default function OrdersPage() {
             )}
           </>
         )}
+      </div>
+
+      {/* Simple Status Management Guide */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="font-medium text-blue-900 mb-2">
+          Simple Status Management
+        </h4>
+        <div className="text-sm text-blue-800 space-y-1">
+          <p>
+            <strong>Order Status:</strong> Confirmed → Delivered (or Cancelled)
+          </p>
+          <p>
+            <strong>Payment Status:</strong> Pending → Completed (or Failed)
+          </p>
+          <p>• All orders start as "Confirmed" when placed</p>
+          <p>• Click on any status badge to edit it directly</p>
+          <p>
+            • Once "Delivered" or "Cancelled", order status cannot be changed
+          </p>
+          <p>• Payment status can always be updated independently</p>
+        </div>
       </div>
     </div>
   );
